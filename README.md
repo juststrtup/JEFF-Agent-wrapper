@@ -60,7 +60,7 @@ curl -X GET https://jeff-agent-wrapper.onrender.com/history/<session_id>
 {
   "session_id": "...",
   "message_count": 4,
-  "history": [
+  "message": [
     ...
   ]
 }
