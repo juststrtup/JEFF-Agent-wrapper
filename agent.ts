@@ -129,7 +129,10 @@ export const jeff = new Agent({
   name: "Jeff",
   instructions: "[REDACTED — CONFIGURED BY RAJ ON OPENAI PLATFORM]",
   model: process.env.JEFF_AGENT_MODEL || "gpt-3.5-turbo",
-  tools: [],
+  tools: [
+    webSearchPreview,
+    codeInterpreter
+  ],
   modelSettings: {
     store: true
   }
@@ -139,6 +142,7 @@ export const informer = new Agent({
   name: "Informer",
   instructions: "[REDACTED — CONFIGURED BY RAJ ON OPENAI PLATFORM]",
   model: process.env.INFORMER_AGENT_MODEL || "gpt-3.5-turbo",
+  
   modelSettings: {
     temperature: 1,
     topP: 1,

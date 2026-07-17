@@ -12,15 +12,25 @@ The application uses a **FastAPI Proxy + Node.js Sidecar** design pattern:
 1. **Client Request**: The client sends a `POST /chat` request to the FastAPI app (Port 8000).
 2. **FastAPI Layer**: FastAPI verifies the user's rolling 24-hour token quota and loads the conversation history from memory. It compiles the request and calls the internal Node.js sidecar (Port 3000) over local HTTP.
 3. **Node.js Sidecar**: The Express sidecar processes the user query using the `@openai/agents` SDK, first passing the prompt through `@openai/guardrails` to check for PII, NSFW, and prompt injection. If guardrails are triggered, it routes the message to the restricted Informer agent; otherwise, it queries the main Jeff agent.
-4. **Streaming Response**: The sidecar outputs streaming NDJSON tokens to FastAPI, which flushes them immediately to the client as a text stream. Upon turn completion, the sidecar returns the final token usage statistics to update the quota ledger.
-
+4. **Streaming Response**: The sidecar streams NDJSON tokens to FastAPI, which forwards the streamed response to the client. Upon completion, the sidecar returns the final token usage statistics to update the quota ledger. Depending on the deployment platform, proxy buffering may affect how streaming is observed by the client.
 ---
 
 ## Model Configuration
 
 This system integrates with OpenAI API models configured via environment variables:
-- **Core Agent Executions**: Configured to run on **`gpt-3.5-turbo`** (customizable via `JEFF_AGENT_MODEL` and `INFORMER_AGENT_MODEL` env vars).
-- **Guardrails Moderation & Jailbreak Checks**: Configured to run on **`gpt-4.1-mini`** for high-performance classification.
+- **Core Agent Executions**: Configured to run on **`gpt-4o-mini`** (customizable via `JEFF_AGENT_MODEL` and `INFORMER_AGENT_MODEL` env vars).
+- **Guardrails Moderation & Jailbreak Checks**: Configured to run on **`gpt-4.1-mini`** for high-performance classification. 
+
+---
+
+## Agent Capabilities
+
+Jeff is configured with OpenAI hosted tools including:
+
+- Web Search
+- Code Interpreter
+
+Tool availability depends on the configured model and OpenAI account permissions.
 
 ---
 
@@ -39,9 +49,24 @@ curl -X GET https://jeff-agent-wrapper.onrender.com/health
   "service": "Jeff AI Agent",
   "sidecar": "ok"
 }
-```
+``` 
 
-#### B. Streaming Chat Request (POST /chat)
+#### B. Conversation History (GET /history/{session_id})
+```bash
+curl -X GET https://jeff-agent-wrapper.onrender.com/history/<session_id> 
+``` 
+*Expected Response:*
+```json
+{
+  "session_id": "...",
+  "message_count": 4,
+  "message": [
+    ...
+  ]
+}
+``` 
+
+#### C. Streaming Chat Request (POST /chat)
 **Gold Input:** `"I want to launch a SaaS startup, give me a quick campaign hook."`
 ```bash
 curl -X POST https://jeff-agent-wrapper.onrender.com/chat \
@@ -50,7 +75,7 @@ curl -X POST https://jeff-agent-wrapper.onrender.com/chat \
 ```
 *Expected Behavior:* Response body streams markdown text chunk-by-chunk while returning `X-Tokens-Remaining` headers.
 
-#### C. Spreadsheet Export (POST /export/xlsx)
+#### D. Spreadsheet Export (POST /export/xlsx)
 ```bash
 curl -X POST https://jeff-agent-wrapper.onrender.com/export/xlsx \
   -H "Content-Type: application/json" \
@@ -58,7 +83,7 @@ curl -X POST https://jeff-agent-wrapper.onrender.com/export/xlsx \
   --output projection.xlsx
 ```
 
-#### D. PDF Report Export (POST /export/pdf)
+#### E. PDF Report Export (POST /export/pdf)
 ```bash
 curl -X POST https://jeff-agent-wrapper.onrender.com/export/pdf \
   -H "Content-Type: application/json" \
@@ -66,7 +91,7 @@ curl -X POST https://jeff-agent-wrapper.onrender.com/export/pdf \
   --output plan.pdf
 ```
 
-#### E. Direct GET Fallback Error Check
+#### F. Direct GET Fallback Error Check
 ```bash
 curl -X GET https://jeff-agent-wrapper.onrender.com/chat
 ```
@@ -95,3 +120,4 @@ curl -X GET https://jeff-agent-wrapper.onrender.com/chat
 - **Chat Endpoints**: Confirmed stream responses, CORS origin rules, and header returns locally and on the live Render environment.
 - **Quota Enforcements**: Validated `429` status responses and header balance deductions.
 - **File Exports**: Checked downloaded `.xlsx` and `.pdf` files locally to ensure columns and styles compile correctly.
+- **Hosted Agent Tools**: Verified automatic hosted tool invocation (e.g., Web Search) using the configured production model.
