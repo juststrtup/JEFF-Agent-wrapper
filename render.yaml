@@ -22,9 +22,9 @@ services:
       - key: JEFF_WORKFLOW_ID
         sync: false
       - key: JEFF_AGENT_MODEL
-        value: "gpt-3.5-turbo"
+        value: "gpt-4o-mini"
       - key: INFORMER_AGENT_MODEL
-        value: "gpt-3.5-turbo"
+        value: "gpt-4o-mini"
       - key: CORS_ORIGINS
         value: "https://juststrtup.com,http://juststrtup.com,https://www.juststrtup.com,https://juststartup.com,http://juststartup.com,https://www.juststartup.com"
       - key: PRO_TOKEN_LIMIT

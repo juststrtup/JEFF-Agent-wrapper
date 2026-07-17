@@ -432,6 +432,25 @@ async def clear_session(request: Request):
         del session_store[session_id]
     return {"status": "cleared", "session_id": session_id}
 
+@app.get("/history/{session_id}")
+@app.get("/history/{session_id}/")
+async def get_history(session_id: str):
+    """Return the conversation history for a session."""
+    chat_history = get_session_history(session_id)
+    messages = []
+
+    for msg in chat_history.messages:
+        if isinstance(msg, HumanMessage):
+            messages.append({"role": "user", "content": msg.content})
+        elif isinstance(msg, AIMessage):
+            messages.append({"role": "assistant", "content": msg.content})
+
+    return {
+        "session_id": session_id,
+        "message_count": len(messages),
+        "messages": messages,
+    }
+
 
 @app.get("/health")
 @app.get("/health/")
