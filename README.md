@@ -10,9 +10,9 @@ The **JEFF Agent Wrapper** is a FastAPI gateway proxy designed to interface with
 
 The application uses a **FastAPI Proxy + Node.js Sidecar** design pattern:
 1. **Client Request**: The client sends a `POST /chat` request to the FastAPI app (Port 8000).
-2. **FastAPI Layer**: FastAPI verifies the user's rolling 24-hour token quota and loads the conversation history from memory. It compiles the request and calls the internal Node.js sidecar (Port 3000) over local HTTP.
+2. **FastAPI Layer**: FastAPI verifies the user's rolling 24-hour token quota and loads the conversation history from PostgreSQL using SQLAlchemy Async. It compiles the request and calls the internal Node.js sidecar (Port 3000) over local HTTP. 
 3. **Node.js Sidecar**: The Express sidecar processes the user query using the `@openai/agents` SDK, first passing the prompt through `@openai/guardrails` to check for PII, NSFW, and prompt injection. If guardrails are triggered, it routes the message to the restricted Informer agent; otherwise, it queries the main Jeff agent.
-4. **Streaming Response**: The sidecar streams NDJSON tokens to FastAPI, which forwards the streamed response to the client. Upon completion, the sidecar returns the final token usage statistics to update the quota ledger. Depending on the deployment platform, proxy buffering may affect how streaming is observed by the client.
+4. **Streaming Response**: The sidecar streams NDJSON tokens to FastAPI, which forwards the streamed response to the client. Upon completion, the sidecar returns the final token usage statistics to update the quota ledger stored in PostgreSQL. Depending on the deployment platform, proxy buffering may affect how streaming is observed by the client.
 ---
 
 ## Model Configuration
@@ -20,6 +20,14 @@ The application uses a **FastAPI Proxy + Node.js Sidecar** design pattern:
 This system integrates with OpenAI API models configured via environment variables:
 - **Core Agent Executions**: Configured to run on **`gpt-4o-mini`** (customizable via `JEFF_AGENT_MODEL` and `INFORMER_AGENT_MODEL` env vars).
 - **Guardrails Moderation & Jailbreak Checks**: Configured to run on **`gpt-4.1-mini`** for high-performance classification. 
+
+--- 
+
+## Database
+
+- PostgreSQL
+- SQLAlchemy Async
+- Alembic migrations
 
 ---
 
@@ -60,7 +68,7 @@ curl -X GET https://jeff-agent-wrapper.onrender.com/history/<session_id>
 {
   "session_id": "...",
   "message_count": 4,
-  "message": [
+  "messages": [
     ...
   ]
 }
@@ -104,12 +112,15 @@ curl -X GET https://jeff-agent-wrapper.onrender.com/chat
 ### What's Done
 - **Dual-Process Daemon**: Setup `start.sh` and updated `render.yaml` to ensure both FastAPI and the Express sidecar launch automatically in production.
 - **NDJSON Stream Piping**: Replaced simulated streaming with native `StreamedRunResult` token piping.
-- **Quotas & Memory**: Implemented a rolling 24-hour limit of 150,000 tokens per user and a 2-hour inactivity sliding TTL for session histories.
+- **Quotas & Memory**: Implemented a rolling 24-hour token limit and 2-hour sliding session TTL, now persisted in PostgreSQL.
 - **Export Pipeline**: Server-side Excel (`openpyxl`) and PDF (`reportlab`) file generation are fully active.
 - **Campaign Builder Rename**: Updated the frontend and backend modes from `pitch_deck` to `campaign_builder`.
+- **Database Migrations**: Introduced Alembic for version-controlled schema management and database migrations. 
+- **PostgreSQL Persistence**: Replaced in-memory session history and token usage storage with PostgreSQL using SQLAlchemy Async.
+
 
 ### What's Pending & Known Limitations
-- **Scaling Persistence**: Quota ledger and session history are currently stored in-memory. **Needs Redis** for multi-instance production environments.
+- **Multi-instance scaling**: Future support for distributed caching (e.g. Redis) if horizontal scaling is required.
 - **System Prompts**: OpenAI system prompts for Campaign Builder are managed on the OpenAI platform dashboard, not inside this repository.
 
 ### Known-Broken
