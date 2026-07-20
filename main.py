@@ -5,20 +5,24 @@ import os
 import re
 import subprocess
 import time
+from datetime import datetime, timezone
 from typing import Any
 import httpx
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, StreamingResponse
-from langchain_core.chat_history import InMemoryChatMessageHistory
-from langchain_core.messages import AIMessage, HumanMessage
 from openpyxl import Workbook
 from pydantic import BaseModel, Field
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import letter
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+from sqlalchemy import delete, select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from db.database import AsyncSessionLocal
+from db.models import Message, Session as ChatSession, TokenUsage
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 load_dotenv(os.path.join(BASE_DIR, ".env"))
@@ -61,11 +65,6 @@ app.add_middleware(
 )
 
 node_process: subprocess.Popen | None = None
-# TODO: replace dict with Redis for multi-instance production
-session_store: dict[str, InMemoryChatMessageHistory] = {}
-session_timestamps: dict[str, float] = {}  # last-access time per session
-# TODO: replace dict with Redis for multi-instance production
-token_usage_store: dict[str, list[tuple[float, int]]] = {}
 
 
 class ChatRequest(BaseModel):
@@ -130,50 +129,87 @@ def shutdown_event() -> None:
         node_process.terminate()
 
 
-def get_session_history(session_id: str) -> InMemoryChatMessageHistory:
-    now = time.time()
-    # Expire sessions older than SESSION_TTL_SECONDS (2 hours)
-    last_access = session_timestamps.get(session_id, 0)
-    if session_id in session_store and (now - last_access) > SESSION_TTL_SECONDS:
-        del session_store[session_id]
-        del session_timestamps[session_id]
-    if session_id not in session_store:
-        session_store[session_id] = InMemoryChatMessageHistory()
-    session_timestamps[session_id] = now
-    return session_store[session_id]
+def utc_now() -> datetime:
+    return datetime.now(timezone.utc)
+
+
+async def get_session_history(
+    db: AsyncSession,
+    user_id: str,
+    mode: str,
+    session_id: str,
+) -> list[Message]:
+    now = utc_now()
+    chat_session = await db.get(ChatSession, {"user_id": user_id, "mode": mode})
+    expired = (
+        chat_session is not None
+        and (now - chat_session.last_active_at).total_seconds() > SESSION_TTL_SECONDS
+    )
+    session_changed = chat_session is not None and chat_session.session_id != session_id
+
+    if expired or session_changed:
+        await db.delete(chat_session)
+        await db.flush()
+        chat_session = None
+
+    if chat_session is None:
+        db.add(
+            ChatSession(
+                user_id=user_id,
+                mode=mode,
+                session_id=session_id,
+                last_active_at=now,
+            )
+        )
+    else:
+        chat_session.last_active_at = now
+
+    await db.commit()
+    result = await db.execute(
+        select(Message)
+        .where(Message.user_id == user_id, Message.mode == mode)
+        .order_by(Message.created_at, Message.id)
+    )
+    return list(result.scalars())
 
 
 def quota_key_for(request: ChatRequest) -> str:
     return request.user_id or request.session_id
 
 
-def prune_token_events(key: str, now: float | None = None) -> list[tuple[float, int]]:
+async def load_token_events(
+    db: AsyncSession,
+    key: str,
+    now: float | None = None,
+) -> list[tuple[float, int]]:
     now = now or time.time()
-    cutoff = now - TOKEN_WINDOW_SECONDS
-    events = [(created_at, tokens) for created_at, tokens in token_usage_store.get(key, []) if created_at > cutoff]
-    token_usage_store[key] = events
-    return events
+    cutoff = datetime.fromtimestamp(now - TOKEN_WINDOW_SECONDS, timezone.utc)
+    result = await db.execute(
+        select(TokenUsage.created_at, TokenUsage.tokens)
+        .where(TokenUsage.user_id == key, TokenUsage.created_at > cutoff)
+        .order_by(TokenUsage.created_at)
+    )
+    return [(created_at.timestamp(), tokens) for created_at, tokens in result.all()]
 
 
-def quota_state(key: str) -> dict[str, int]:
+async def quota_state(db: AsyncSession, key: str) -> dict[str, int]:
     now = time.time()
-    events = prune_token_events(key, now)
+    events = await load_token_events(db, key, now)
     used = sum(tokens for _, tokens in events)
     reset_at = int((events[0][0] + TOKEN_WINDOW_SECONDS) if events else (now + TOKEN_WINDOW_SECONDS))
     remaining = max(0, TOKEN_LIMIT - used)
     return {"used": used, "remaining": remaining, "reset_at": reset_at}
 
 
-def record_token_usage(key: str, input_tokens: int, output_tokens: int) -> None:
+async def record_token_usage(db: AsyncSession, key: str, input_tokens: int, output_tokens: int) -> None:
     total = max(0, int(input_tokens or 0)) + max(0, int(output_tokens or 0))
     if total <= 0:
         return
-    prune_token_events(key)
-    token_usage_store.setdefault(key, []).append((time.time(), total))
+    db.add(TokenUsage(user_id=key, tokens=total, created_at=utc_now()))
 
 
-def quota_headers(session_id: str, key: str) -> dict[str, str]:
-    state = quota_state(key)
+async def quota_headers(db: AsyncSession, session_id: str, key: str) -> dict[str, str]:
+    state = await quota_state(db, key)
     return {
         "X-Session-Id": session_id,
         "X-Tokens-Limit": str(TOKEN_LIMIT),
@@ -182,14 +218,41 @@ def quota_headers(session_id: str, key: str) -> dict[str, str]:
     }
 
 
-def agent_history_from_session(chat_history: InMemoryChatMessageHistory) -> list[dict[str, Any]]:
+def agent_history_from_session(chat_history: list[Message]) -> list[dict[str, Any]]:
     messages: list[dict[str, Any]] = []
-    for msg in chat_history.messages:
-        if isinstance(msg, HumanMessage):
+    for msg in chat_history:
+        if msg.role == "user":
             messages.append({"role": "user", "content": [{"type": "input_text", "text": msg.content}]})
-        elif isinstance(msg, AIMessage):
+        elif msg.role == "assistant":
             messages.append({"role": "assistant", "content": [{"type": "output_text", "text": msg.content}]})
     return messages
+
+
+async def record_chat_messages(db: AsyncSession, user_id: str, mode: str, user_text: str, assistant_text: str) -> None:
+    db.add(Message(user_id=user_id, mode=mode, role="user", content=user_text, created_at=utc_now()))
+    db.add(Message(user_id=user_id, mode=mode, role="assistant", content=assistant_text, created_at=utc_now()))
+
+
+async def get_history_by_session_id(db: AsyncSession, session_id: str) -> list[Message]:
+    result = await db.execute(
+        select(ChatSession)
+        .where(ChatSession.session_id == session_id)
+        .order_by(ChatSession.last_active_at.desc())
+        .limit(1)
+    )
+    chat_session = result.scalar_one_or_none()
+    if chat_session is None:
+        return []
+
+    chat_session.last_active_at = utc_now()
+    await db.commit()
+
+    messages = await db.execute(
+        select(Message)
+        .where(Message.user_id == chat_session.user_id, Message.mode == chat_session.mode)
+        .order_by(Message.created_at, Message.id)
+    )
+    return list(messages.scalars())
 
 
 def safe_filename(filename: str, extension: str) -> str:
@@ -299,7 +362,8 @@ async def chat(request: ChatRequest):
         )
 
     quota_key = quota_key_for(request)
-    current_quota = quota_state(quota_key)
+    async with AsyncSessionLocal() as db:
+        current_quota = await quota_state(db, quota_key)
     if current_quota["remaining"] <= 0:
         retry_after = max(1, current_quota["reset_at"] - int(time.time()))
         raise HTTPException(
@@ -313,7 +377,8 @@ async def chat(request: ChatRequest):
             },
         )
 
-    chat_history = get_session_history(request.session_id)
+    async with AsyncSessionLocal() as db:
+        chat_history = await get_session_history(db, quota_key, request.mode, request.session_id)
     messages = agent_history_from_session(chat_history)
     messages.append({"role": "user", "content": [{"type": "input_text", "text": request.message}]})
 
@@ -352,16 +417,23 @@ async def chat(request: ChatRequest):
                             yield event.get("message", "Jeff hit an internal error.")
 
             if full_response:
-                chat_history.add_message(HumanMessage(content=request.message))
-                chat_history.add_message(AIMessage(content=full_response))
-            record_token_usage(quota_key, input_tokens, output_tokens)
+                async with AsyncSessionLocal() as db:
+                    await record_chat_messages(db, quota_key, request.mode, request.message, full_response)
+                    await record_token_usage(db, quota_key, input_tokens, output_tokens)
+                    await db.commit()
+            else:
+                async with AsyncSessionLocal() as db:
+                    await record_token_usage(db, quota_key, input_tokens, output_tokens)
+                    await db.commit()
         except Exception as exc:
             yield f"Stream failed: {exc}"
 
+    async with AsyncSessionLocal() as db:
+        token_headers = await quota_headers(db, request.session_id, quota_key)
     headers = {
         "Cache-Control": "no-cache",
         "X-Accel-Buffering": "no",
-        **quota_headers(request.session_id, quota_key),
+        **token_headers,
     }
     return StreamingResponse(stream_response(), media_type="text/plain", headers=headers)
 
@@ -428,21 +500,23 @@ async def export_pdf(request: ExportRequest):
 async def clear_session(request: Request):
     data = await request.json()
     session_id = data.get("session_id")
-    if session_id in session_store:
-        del session_store[session_id]
+    async with AsyncSessionLocal() as db:
+        await db.execute(delete(ChatSession).where(ChatSession.session_id == session_id))
+        await db.commit()
     return {"status": "cleared", "session_id": session_id}
 
 @app.get("/history/{session_id}")
 @app.get("/history/{session_id}/")
 async def get_history(session_id: str):
     """Return the conversation history for a session."""
-    chat_history = get_session_history(session_id)
+    async with AsyncSessionLocal() as db:
+        chat_history = await get_history_by_session_id(db, session_id)
     messages = []
 
-    for msg in chat_history.messages:
-        if isinstance(msg, HumanMessage):
+    for msg in chat_history:
+        if msg.role == "user":
             messages.append({"role": "user", "content": msg.content})
-        elif isinstance(msg, AIMessage):
+        elif msg.role == "assistant":
             messages.append({"role": "assistant", "content": msg.content})
 
     return {
