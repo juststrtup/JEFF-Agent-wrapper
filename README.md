@@ -121,6 +121,7 @@ curl -X GET https://jeff-agent-wrapper.onrender.com/chat
 
 ### What's Pending & Known Limitations
 - **Multi-instance scaling**: Future support for distributed caching (e.g. Redis) if horizontal scaling is required.
+- **Concurrent quota synchronization**: Future support for transactional locking or equivalent concurrency control to ensure accurate quota enforcement under high concurrent load.
 - **System Prompts**: OpenAI system prompts for Campaign Builder are managed on the OpenAI platform dashboard, not inside this repository.
 
 ### Known-Broken

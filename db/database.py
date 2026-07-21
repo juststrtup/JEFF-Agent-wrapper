@@ -18,7 +18,7 @@ if DATABASE_URL is None:
 
 engine = create_async_engine(
     DATABASE_URL,
-    echo=True,          # turn False later
+    echo=os.getenv("SQL_ECHO", "false").lower() == "true",        
     future=True,
 )
 
