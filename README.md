@@ -112,11 +112,12 @@ curl -X GET https://jeff-agent-wrapper.onrender.com/chat
 ### What's Done
 - **Dual-Process Daemon**: Setup `start.sh` and updated `render.yaml` to ensure both FastAPI and the Express sidecar launch automatically in production.
 - **NDJSON Stream Piping**: Replaced simulated streaming with native `StreamedRunResult` token piping.
-- **Quotas & Memory**: Implemented a rolling 24-hour token limit and 2-hour sliding session TTL, now persisted in PostgreSQL.
+- **Quotas & Memory**: Implemented a rolling 24-hour token limit, 2-hour sliding session TTL, and persistent per-mode session tracking backed by PostgreSQL.
 - **Export Pipeline**: Server-side Excel (`openpyxl`) and PDF (`reportlab`) file generation are fully active.
 - **Campaign Builder Rename**: Updated the frontend and backend modes from `pitch_deck` to `campaign_builder`.
 - **Database Migrations**: Introduced Alembic for version-controlled schema management and database migrations. 
 - **PostgreSQL Persistence**: Replaced in-memory session history and token usage storage with PostgreSQL using SQLAlchemy Async.
+- **Persistent Per-Mode Sessions**: Session IDs are persisted per interaction mode in the frontend and synchronized with PostgreSQL, allowing conversations to survive browser refreshes while maintaining independent histories for each Jeff mode.
 
 
 ### What's Pending & Known Limitations
@@ -133,3 +134,4 @@ curl -X GET https://jeff-agent-wrapper.onrender.com/chat
 - **Quota Enforcements**: Validated `429` status responses and header balance deductions.
 - **File Exports**: Checked downloaded `.xlsx` and `.pdf` files locally to ensure columns and styles compile correctly.
 - **Hosted Agent Tools**: Verified automatic hosted tool invocation (e.g., Web Search) using the configured production model.
+- **Session Persistence**: Verified that browser refreshes preserve conversation history while maintaining isolated histories for each interaction mode.

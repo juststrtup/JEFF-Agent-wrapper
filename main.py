@@ -147,7 +147,7 @@ async def get_session_history(
     )
     session_changed = chat_session is not None and chat_session.session_id != session_id
 
-    if expired or session_changed:
+    if expired:
         await db.delete(chat_session)
         await db.flush()
         chat_session = None
@@ -162,6 +162,9 @@ async def get_session_history(
             )
         )
     else:
+        if session_changed:
+           chat_session.session_id = session_id
+
         chat_session.last_active_at = now
 
     await db.commit()
