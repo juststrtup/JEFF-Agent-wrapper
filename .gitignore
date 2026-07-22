@@ -12,3 +12,4 @@ dist/
 build/
 *.log
 *.env
+Agents.md
