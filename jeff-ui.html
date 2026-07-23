@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,11 +8,15 @@
     <meta name="description" content="Jeff AI Agent — multi-mode startup co-founder chat interface by JustStartUP">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Rosario:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Rosario:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap"
+        rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <style>
         /* ── Reset & Base ────────────────────────────────────────── */
-        *, *::before, *::after {
+        *,
+        *::before,
+        *::after {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
@@ -249,8 +254,15 @@
         }
 
         @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(8px); }
-            to { opacity: 1; transform: translateY(0); }
+            from {
+                opacity: 0;
+                transform: translateY(8px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
 
         .message.jeff {
@@ -309,10 +321,23 @@
             margin: 12px 0 6px 0;
             line-height: 1.3;
         }
-        .message-bubble h1 { font-size: 18px; }
-        .message-bubble h2 { font-size: 16px; }
-        .message-bubble h3 { font-size: 15px; }
-        .message-bubble h4 { font-size: 14px; }
+
+        .message-bubble h1 {
+            font-size: 18px;
+        }
+
+        .message-bubble h2 {
+            font-size: 16px;
+        }
+
+        .message-bubble h3 {
+            font-size: 15px;
+        }
+
+        .message-bubble h4 {
+            font-size: 14px;
+        }
+
         .message-bubble h1:first-child,
         .message-bubble h2:first-child,
         .message-bubble h3:first-child {
@@ -322,8 +347,14 @@
         .message-bubble p {
             margin: 8px 0;
         }
-        .message-bubble p:first-child { margin-top: 0; }
-        .message-bubble p:last-child { margin-bottom: 0; }
+
+        .message-bubble p:first-child {
+            margin-top: 0;
+        }
+
+        .message-bubble p:last-child {
+            margin-bottom: 0;
+        }
 
         .message-bubble strong {
             color: #ffffff;
@@ -452,12 +483,27 @@
             animation: typingPulse 1.4s infinite ease-in-out;
         }
 
-        .typing-dot:nth-child(2) { animation-delay: 0.2s; }
-        .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+        .typing-dot:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+
+        .typing-dot:nth-child(3) {
+            animation-delay: 0.4s;
+        }
 
         @keyframes typingPulse {
-            0%, 60%, 100% { transform: scale(0.6); opacity: 0.4; }
-            30% { transform: scale(1); opacity: 1; }
+
+            0%,
+            60%,
+            100% {
+                transform: scale(0.6);
+                opacity: 0.4;
+            }
+
+            30% {
+                transform: scale(1);
+                opacity: 1;
+            }
         }
 
         /* ── Input Bar ───────────────────────────────────────────── */
@@ -567,6 +613,7 @@
         }
     </style>
 </head>
+
 <body>
 
     <!-- ── Header ──────────────────────────────────────────────── -->
@@ -601,13 +648,8 @@
 
     <!-- ── Input Bar ───────────────────────────────────────────── -->
     <footer class="input-bar" id="inputBar">
-        <input
-            type="text"
-            class="input-field"
-            id="inputField"
-            placeholder="Ask Jeff anything about your startup..."
-            autocomplete="off"
-        >
+        <input type="text" class="input-field" id="inputField" placeholder="Ask Jeff anything about your startup..."
+            autocomplete="off">
         <button class="send-btn" id="sendBtn" title="Send message">→</button>
     </footer>
 
@@ -628,44 +670,53 @@
 
         // Per-mode session IDs — each mode has its own LangChain memory on the server.
         // Switching modes preserves each mode's conversation independently.
-        const modeSessions = {
-            investor:       crypto.randomUUID(),
+        const savedModeSessions = JSON.parse(
+            localStorage.getItem("jeff_mode_sessions") || "null"
+        );
+
+        const modeSessions = savedModeSessions || {
+            investor: crypto.randomUUID(),
             business_model: crypto.randomUUID(),
-            customer:       crypto.randomUUID(),
-            campaign_builder:     crypto.randomUUID(),
-            financial:      crypto.randomUUID()
+            customer: crypto.randomUUID(),
+            campaign_builder: crypto.randomUUID(),
+            financial: crypto.randomUUID()
         };
+
+        localStorage.setItem(
+            "jeff_mode_sessions",
+            JSON.stringify(modeSessions)
+        );
 
         // Per-mode chat UI cache — stores the innerHTML of chatArea per mode
         // so switching back restores the exact conversation visually.
         const modeChatCache = {
-            investor:       null,
+            investor: null,
             business_model: null,
-            customer:       null,
-            campaign_builder:     null,
-            financial:      null
+            customer: null,
+            campaign_builder: null,
+            financial: null
         };
 
         // Active session_id — points to current mode's session
         let sessionId = modeSessions[currentMode];
 
         // ── DOM References ───────────────────────────────────────────────────
-        const chatArea     = document.getElementById('chatArea');
-        const inputField   = document.getElementById('inputField');
-        const sendBtn      = document.getElementById('sendBtn');
-        const modeButtons  = document.querySelectorAll('.mode-btn');
-        const closeBtn     = document.getElementById('closeBtn');
+        const chatArea = document.getElementById('chatArea');
+        const inputField = document.getElementById('inputField');
+        const sendBtn = document.getElementById('sendBtn');
+        const modeButtons = document.querySelectorAll('.mode-btn');
+        const closeBtn = document.getElementById('closeBtn');
         const closeOverlay = document.getElementById('closeOverlay');
-        const reopenBtn    = document.getElementById('reopenBtn');
-        const quotaStatus  = document.getElementById('quotaStatus');
+        const reopenBtn = document.getElementById('reopenBtn');
+        const quotaStatus = document.getElementById('quotaStatus');
 
         // ── Welcome Messages (per mode) ─────────────────────────────────────
         const welcomeMessages = {
-            investor:       "Hi, I'm Jeff. Let's build your investor story. What stage are you at, and who are you trying to reach?",
+            investor: "Hi, I'm Jeff. Let's build your investor story. What stage are you at, and who are you trying to reach?",
             business_model: "Hi, I'm Jeff. Let's design your business model. Tell me what you're building and who pays for it.",
-            customer:       "Hi, I'm Jeff. Let's get inside your customer's head. Who is the person whose life you're trying to make better?",
-            campaign_builder:     "Hi, I'm Jeff. Let's build your campaign. What's your one-line company description?",
-            financial:      "Hi, I'm Jeff. Let's run the numbers. What's your current MRR, burn rate, or the financial question on your mind?"
+            customer: "Hi, I'm Jeff. Let's get inside your customer's head. Who is the person whose life you're trying to make better?",
+            campaign_builder: "Hi, I'm Jeff. Let's build your campaign. What's your one-line company description?",
+            financial: "Hi, I'm Jeff. Let's run the numbers. What's your current MRR, burn rate, or the financial question on your mind?"
         };
 
         // ── Mock Responses (local demo copy, not used for production chat) ───
@@ -1002,6 +1053,11 @@
             }
             sessionId = modeSessions[currentMode];
 
+            localStorage.setItem(
+                "jeff_mode_sessions",
+                JSON.stringify(modeSessions)
+            );
+
             chatArea.innerHTML = '';
             closeOverlay.classList.add('visible');
             closeOverlay.setAttribute('aria-hidden', 'false');
@@ -1069,4 +1125,5 @@
         inputField.focus();
     </script>
 </body>
+
 </html>
