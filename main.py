@@ -502,11 +502,23 @@ async def export_pdf(request: ExportRequest):
 @app.post("/clear/")
 async def clear_session(request: Request):
     data = await request.json()
-    session_id = data.get("session_id")
+    user_id = data.get("user_id")
+    mode = data.get("mode")
+
     async with AsyncSessionLocal() as db:
-        await db.execute(delete(ChatSession).where(ChatSession.session_id == session_id))
+        await db.execute(
+            delete(ChatSession).where(
+                ChatSession.user_id == user_id,
+                ChatSession.mode == mode,
+            )
+        )
         await db.commit()
-    return {"status": "cleared", "session_id": session_id}
+
+    return {
+        "status": "cleared",
+        "user_id": user_id,
+        "mode": mode,
+    }
 
 @app.get("/history/{session_id}")
 @app.get("/history/{session_id}/")

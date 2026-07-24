@@ -1035,16 +1035,21 @@
         // Close clears ALL modes' memory (server + client) — full reset.
 
         async function closeInterface() {
-            // Clear ALL server-side LangChain sessions
-            for (const sid of Object.values(modeSessions)) {
-                try {
-                    await fetch(`${API_BASE_URL}/clear`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ session_id: sid })
-                    });
-                } catch (e) { /* no-op */ }
-            }
+                // Clear ALL server-side LangChain sessions
+                for (const mode of Object.keys(modeSessions)) {
+                    try {
+                        await fetch(`${API_BASE_URL}/clear`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                user_id: userId,
+                                mode: mode
+                            })
+                        });
+                    } catch (e) {
+                        /* no-op */
+                    }
+                }
 
             // Reset all session IDs and caches
             for (const mode of Object.keys(modeSessions)) {
