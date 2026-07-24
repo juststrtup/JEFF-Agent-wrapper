@@ -22,4 +22,5 @@ NODE_PID=$!
 sleep 2
 
 echo "[start.sh] Starting FastAPI (uvicorn) on port $PORT..."
+alembic upgrade head
 exec uvicorn main:app --host 0.0.0.0 --port "$PORT"
