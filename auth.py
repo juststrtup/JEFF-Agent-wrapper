@@ -17,7 +17,7 @@ class CurrentUser:
 
 
 def require_auth() -> bool:
-    return os.getenv("REQUIRE_AUTH", "true").lower() == "true"
+    return os.getenv("REQUIRE_AUTH", "false").lower() == "true"
 
 
 def _unauthorized() -> HTTPException:
