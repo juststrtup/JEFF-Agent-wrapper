@@ -10,10 +10,6 @@ services:
       npm ci --include=dev
       npm run build 
 
-<<<<<<< HEAD
-=======
-
->>>>>>> origin/main
     startCommand: bash start.sh
 
     healthCheckPath: /health
