@@ -31,6 +31,37 @@ This system integrates with OpenAI API models configured via environment variabl
 
 ---
 
+## Authentication
+
+G2 authenticates protected API calls with a signed WordPress JWT.
+
+- `REQUIRE_AUTH=true`: protected endpoints require `Authorization: Bearer <jwt>`.
+- `REQUIRE_AUTH=false`: local development preserves the legacy behavior by allowing the request's user_id to be used when no JWT is supplied.
+- `WP_JWT_SECRET`: shared secret used to verify WordPress JWT signatures.
+
+Authenticated endpoints:
+
+- `POST /chat`
+- `POST /clear`
+- `GET /history/{session_id}`
+- `POST /export/xlsx`
+- `POST /export/pdf`
+
+Public endpoints:
+
+- `GET /`
+- `GET /health`
+
+Generate a local test token:
+
+```bash
+python scripts/generate_test_jwt.py 123
+```
+
+When `REQUIRE_AUTH=true`, quota, sessions, and messages are keyed by the authenticated WordPress user id, not by client-supplied `user_id`.
+
+---
+
 ## Agent Capabilities
 
 Jeff is configured with OpenAI hosted tools including:
@@ -61,7 +92,8 @@ curl -X GET https://jeff-agent-wrapper.onrender.com/health
 
 #### B. Conversation History (GET /history/{session_id})
 ```bash
-curl -X GET https://jeff-agent-wrapper.onrender.com/history/<session_id> 
+curl -X GET https://jeff-agent-wrapper.onrender.com/history/<session_id> \
+  -H "Authorization: Bearer <jwt>"
 ``` 
 *Expected Response:*
 ```json
@@ -79,6 +111,7 @@ curl -X GET https://jeff-agent-wrapper.onrender.com/history/<session_id>
 ```bash
 curl -X POST https://jeff-agent-wrapper.onrender.com/chat \
   -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <jwt>" \
   -d '{"message": "I want to launch a SaaS startup, give me a quick campaign hook.", "mode": "campaign_builder"}'
 ```
 *Expected Behavior:* Response body streams markdown text chunk-by-chunk while returning `X-Tokens-Remaining` headers.
@@ -87,6 +120,7 @@ curl -X POST https://jeff-agent-wrapper.onrender.com/chat \
 ```bash
 curl -X POST https://jeff-agent-wrapper.onrender.com/export/xlsx \
   -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <jwt>" \
   -d '{"payload": {"summary": "Q1 Financial Projection", "rows": [{"month": "Jan", "revenue": 10000, "burn": 4000}]}, "filename": "projection"}' \
   --output projection.xlsx
 ```
@@ -95,6 +129,7 @@ curl -X POST https://jeff-agent-wrapper.onrender.com/export/xlsx \
 ```bash
 curl -X POST https://jeff-agent-wrapper.onrender.com/export/pdf \
   -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <jwt>" \
   -d '{"payload": {"title": "Campaign Launch Plan", "sections": [{"header": "Audience", "text": "Tech builders."}]}, "filename": "plan"}' \
   --output plan.pdf
 ```
@@ -118,6 +153,7 @@ curl -X GET https://jeff-agent-wrapper.onrender.com/chat
 - **Database Migrations**: Introduced Alembic for version-controlled schema management and database migrations. 
 - **PostgreSQL Persistence**: Replaced in-memory session history and token usage storage with PostgreSQL using SQLAlchemy Async.
 - **Persistent Per-Mode Sessions**: Session IDs are persisted per interaction mode in the frontend and synchronized with PostgreSQL, allowing conversations to survive browser refreshes while maintaining independent histories for each Jeff mode.
+- **JWT Authentication**: Feature-flagged WordPress JWT verification with authenticated user isolation, protected API endpoints, and local JWT generation utility for development.
 
 
 ### What's Pending & Known Limitations

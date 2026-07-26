@@ -10,7 +10,6 @@ services:
       npm ci --include=dev
       npm run build 
 
-
     startCommand: bash start.sh
 
     healthCheckPath: /health
@@ -18,6 +17,10 @@ services:
     autoDeploy: true
 
     envVars:
+      - key: REQUIRE_AUTH
+        value: "false"
+      - key: WP_JWT_SECRET
+        sync: false
       - key: DATABASE_URL
         sync: false
       - key: OPENAI_API_KEY

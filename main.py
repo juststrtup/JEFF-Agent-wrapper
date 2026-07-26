@@ -9,7 +9,7 @@ from datetime import datetime, timezone
 from typing import Any
 import httpx
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, StreamingResponse
 from openpyxl import Workbook
@@ -21,6 +21,7 @@ from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, Tabl
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from auth import CurrentUser, get_current_user
 from db.database import AsyncSessionLocal
 from db.models import Message, Session as ChatSession, TokenUsage
 
@@ -176,7 +177,9 @@ async def get_session_history(
     return list(result.scalars())
 
 
-def quota_key_for(request: ChatRequest) -> str:
+def quota_key_for(request: ChatRequest, current_user: CurrentUser) -> str:
+    if current_user.user_id:
+        return current_user.user_id
     return request.user_id or request.session_id
 
 
@@ -236,12 +239,12 @@ async def record_chat_messages(db: AsyncSession, user_id: str, mode: str, user_t
     db.add(Message(user_id=user_id, mode=mode, role="assistant", content=assistant_text, created_at=utc_now()))
 
 
-async def get_history_by_session_id(db: AsyncSession, session_id: str) -> list[Message]:
+async def get_history_by_session_id(db: AsyncSession, session_id: str, user_id: str | None = None) -> list[Message]:
+    query = select(ChatSession).where(ChatSession.session_id == session_id)
+    if user_id:
+        query = query.where(ChatSession.user_id == user_id)
     result = await db.execute(
-        select(ChatSession)
-        .where(ChatSession.session_id == session_id)
-        .order_by(ChatSession.last_active_at.desc())
-        .limit(1)
+        query.order_by(ChatSession.last_active_at.desc()).limit(1)
     )
     chat_session = result.scalar_one_or_none()
     if chat_session is None:
@@ -357,14 +360,14 @@ async def chat_get():
 
 @app.post("/chat")
 @app.post("/chat/")
-async def chat(request: ChatRequest):
+async def chat(request: ChatRequest, current_user: CurrentUser = Depends(get_current_user)):
     if request.mode not in VALID_MODES:
         raise HTTPException(
             status_code=422,
             detail=f"Invalid mode '{request.mode}'. Must be one of: {', '.join(sorted(VALID_MODES))}",
         )
 
-    quota_key = quota_key_for(request)
+    quota_key = quota_key_for(request, current_user)
     async with AsyncSessionLocal() as db:
         current_quota = await quota_state(db, quota_key)
     if current_quota["remaining"] <= 0:
@@ -452,7 +455,7 @@ async def export_xlsx_get():
 
 @app.post("/export/xlsx")
 @app.post("/export/xlsx/")
-async def export_xlsx(request: ExportRequest):
+async def export_xlsx(request: ExportRequest, current_user: CurrentUser = Depends(get_current_user)):
     payload = export_payload(request)
     wb = Workbook()
     ws = wb.active
@@ -482,7 +485,7 @@ async def export_pdf_get():
 
 @app.post("/export/pdf")
 @app.post("/export/pdf/")
-async def export_pdf(request: ExportRequest):
+async def export_pdf(request: ExportRequest, current_user: CurrentUser = Depends(get_current_user)):
     payload = export_payload(request)
     output = io.BytesIO()
     title = request.title or request.filename or "Jeff Export"
@@ -500,20 +503,32 @@ async def export_pdf(request: ExportRequest):
 
 @app.post("/clear")
 @app.post("/clear/")
-async def clear_session(request: Request):
+async def clear_session(request: Request, current_user: CurrentUser = Depends(get_current_user)):
     data = await request.json()
-    session_id = data.get("session_id")
+    user_id = current_user.user_id or data.get("user_id")
+    mode = data.get("mode")
+
     async with AsyncSessionLocal() as db:
-        await db.execute(delete(ChatSession).where(ChatSession.session_id == session_id))
+        await db.execute(
+            delete(ChatSession).where(
+                ChatSession.user_id == user_id,
+                ChatSession.mode == mode,
+            )
+        )
         await db.commit()
-    return {"status": "cleared", "session_id": session_id}
+
+    return {
+        "status": "cleared",
+        "user_id": user_id,
+        "mode": mode,
+    }
 
 @app.get("/history/{session_id}")
 @app.get("/history/{session_id}/")
-async def get_history(session_id: str):
+async def get_history(session_id: str, current_user: CurrentUser = Depends(get_current_user)):
     """Return the conversation history for a session."""
     async with AsyncSessionLocal() as db:
-        chat_history = await get_history_by_session_id(db, session_id)
+        chat_history = await get_history_by_session_id(db, session_id, current_user.user_id or None)
     messages = []
 
     for msg in chat_history:
