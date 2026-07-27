@@ -1,14 +1,8 @@
-import base64
-import hashlib
-import hmac
-import json
 import os
 import sys
 import time
 
-
-def b64encode(data: bytes) -> str:
-    return base64.urlsafe_b64encode(data).rstrip(b"=").decode()
+import jwt
 
 
 def main() -> None:
@@ -23,14 +17,7 @@ def main() -> None:
         "iat": int(time.time()),
         "exp": int(time.time()) + 3600,
     }
-    signing_input = ".".join(
-        [
-            b64encode(json.dumps(header, separators=(",", ":")).encode()),
-            b64encode(json.dumps(payload, separators=(",", ":")).encode()),
-        ]
-    )
-    signature = hmac.new(secret.encode(), signing_input.encode(), hashlib.sha256).digest()
-    print(f"Bearer {signing_input}.{b64encode(signature)}")
+    print(f"Bearer {jwt.encode(payload, secret, algorithm=header['alg'], headers=header)}")
 
 
 if __name__ == "__main__":

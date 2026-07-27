@@ -1,31 +1,20 @@
 import asyncio
-import base64
-import hashlib
-import hmac
-import json
 import os
+import sys
 import time
+from pathlib import Path
 
+import jwt
 from fastapi import HTTPException
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from auth import get_current_user, verify_jwt
 
 
-def b64encode(data: bytes) -> str:
-    return base64.urlsafe_b64encode(data).rstrip(b"=").decode()
-
-
-def token(user_id: str = "123", exp: int | None = None, secret: str = "test-secret") -> str:
-    header = {"typ": "JWT", "alg": "HS256"}
-    payload = {"data": {"user": {"id": user_id}}, "exp": exp or int(time.time()) + 60}
-    signing_input = ".".join(
-        [
-            b64encode(json.dumps(header, separators=(",", ":")).encode()),
-            b64encode(json.dumps(payload, separators=(",", ":")).encode()),
-        ]
-    )
-    signature = hmac.new(secret.encode(), signing_input.encode(), hashlib.sha256).digest()
-    return f"{signing_input}.{b64encode(signature)}"
+def token(user_id: str = "123", exp: int | None = None, secret: str = "test-secret", **claims) -> str:
+    payload = {"data": {"user": {"id": user_id}}, "exp": exp or int(time.time()) + 60, **claims}
+    return jwt.encode(payload, secret, algorithm="HS256")
 
 
 async def main() -> None:
@@ -33,6 +22,7 @@ async def main() -> None:
     os.environ["REQUIRE_AUTH"] = "true"
 
     assert verify_jwt(token("42")).user_id == "42"
+    assert verify_jwt(token("43", aud="ignored", nbf=int(time.time()) + 60)).user_id == "43"
 
     try:
         verify_jwt(token("42", secret="wrong-secret"))

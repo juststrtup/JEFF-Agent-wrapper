@@ -1,13 +1,10 @@
-import base64
-import hashlib
-import hmac
-import json
 import os
-import time
 from dataclasses import dataclass
 from typing import Any
 
+import jwt
 from fastapi import Header, HTTPException
+from jwt import InvalidTokenError
 
 
 @dataclass(frozen=True)
@@ -28,11 +25,6 @@ def _unauthorized() -> HTTPException:
     )
 
 
-def _b64decode(value: str) -> bytes:
-    padding = "=" * (-len(value) % 4)
-    return base64.urlsafe_b64decode(value + padding)
-
-
 def _extract_user_id(claims: dict[str, Any]) -> str | None:
     data_user_id = claims.get("data", {}).get("user", {}).get("id") if isinstance(claims.get("data"), dict) else None
     user_id = data_user_id or claims.get("user_id") or claims.get("sub") or claims.get("id")
@@ -44,36 +36,20 @@ def verify_jwt(token: str) -> CurrentUser:
     if not secret:
         raise _unauthorized()
 
-    parts = token.split(".")
-    if len(parts) != 3:
-        raise _unauthorized()
-
     try:
-        header = json.loads(_b64decode(parts[0]))
-        claims = json.loads(_b64decode(parts[1]))
-    except Exception:
-        raise _unauthorized()
-    if not isinstance(header, dict) or not isinstance(claims, dict):
-        raise _unauthorized()
-
-    if header.get("alg") != "HS256":
-        raise _unauthorized()
-
-    signed = f"{parts[0]}.{parts[1]}".encode()
-    expected = hmac.new(secret.encode(), signed, hashlib.sha256).digest()
-    try:
-        signature = _b64decode(parts[2])
-    except Exception:
-        raise _unauthorized()
-    if not hmac.compare_digest(signature, expected):
-        raise _unauthorized()
-
-    exp = claims.get("exp")
-    try:
-        expired = exp is None or int(exp) <= int(time.time())
-    except (TypeError, ValueError):
-        raise _unauthorized()
-    if expired:
+        claims = jwt.decode(
+            token,
+            secret,
+            algorithms=["HS256"],
+            options={
+                "require": ["exp"],
+                "verify_aud": False,
+                "verify_iat": False,
+                "verify_iss": False,
+                "verify_nbf": False,
+            },
+        )
+    except InvalidTokenError:
         raise _unauthorized()
 
     user_id = _extract_user_id(claims)
