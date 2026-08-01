@@ -12,6 +12,7 @@
         href="https://fonts.googleapis.com/css2?family=Rosario:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap"
         rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mammoth/mammoth.browser.min.js"></script>
     <style>
         /* ── Reset & Base ────────────────────────────────────────── */
         *,
@@ -462,6 +463,111 @@
             background: #222;
         }
 
+        .campaign-upload-btn {
+            border: 1px solid var(--border);
+            background: var(--surface-alt);
+            color: var(--text-primary);
+            border-radius: 8px;
+            padding: 0 14px;
+            height: 48px;
+            font-family: 'Rosario', sans-serif;
+            font-size: 13px;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+
+        .campaign-upload-btn[hidden] {
+            display: none;
+        }
+
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.72);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            z-index: 80;
+        }
+
+        .modal-overlay[hidden] {
+            display: none;
+        }
+
+        .upload-modal {
+            width: min(640px, 100%);
+            max-height: min(760px, 90vh);
+            overflow-y: auto;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-card);
+            padding: 20px;
+        }
+
+        .upload-modal h2 {
+            font-size: 18px;
+            margin-bottom: 14px;
+        }
+
+        .upload-field {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            margin-bottom: 12px;
+        }
+
+        .upload-field label {
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
+        .upload-field textarea,
+        .upload-field input {
+            width: 100%;
+            border: 1px solid var(--border);
+            background: var(--bg);
+            color: var(--text-primary);
+            border-radius: 8px;
+            padding: 10px;
+            font-family: 'Rosario', sans-serif;
+            font-size: 14px;
+        }
+
+        .upload-field textarea {
+            min-height: 72px;
+            resize: vertical;
+        }
+
+        .modal-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 14px;
+        }
+
+        .modal-actions button {
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 8px 14px;
+            background: var(--surface-alt);
+            color: var(--text-primary);
+            font-family: 'Rosario', sans-serif;
+            cursor: pointer;
+        }
+
+        .modal-actions .primary {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: #fff;
+        }
+
+        .upload-status {
+            color: var(--text-muted);
+            font-size: 12px;
+            min-height: 16px;
+        }
+
         /* ── Typing Indicator ────────────────────────────────────── */
         .typing-indicator {
             display: flex;
@@ -597,6 +703,7 @@
 
             .input-bar {
                 padding: 12px 16px;
+                gap: 8px;
             }
 
             .message {
@@ -646,8 +753,40 @@
     <!-- ── Chat Area ───────────────────────────────────────────── -->
     <main class="chat-area" id="chatArea"></main>
 
+    <div class="modal-overlay" id="campaignUploadModal" hidden>
+        <div class="upload-modal" role="dialog" aria-modal="true" aria-labelledby="campaignUploadTitle">
+            <h2 id="campaignUploadTitle">Campaign Inputs</h2>
+            <div class="upload-field">
+                <label for="campaignBusinessModel">Business Model</label>
+                <textarea id="campaignBusinessModel"></textarea>
+            </div>
+            <div class="upload-field">
+                <label for="campaignTargetUsers">Target Users</label>
+                <textarea id="campaignTargetUsers"></textarea>
+            </div>
+            <div class="upload-field">
+                <label for="campaignDemographics">Demographics</label>
+                <textarea id="campaignDemographics"></textarea>
+            </div>
+            <div class="upload-field">
+                <label for="campaignFinancialPlan">Financial Plan</label>
+                <textarea id="campaignFinancialPlan"></textarea>
+            </div>
+            <div class="upload-field">
+                <label for="campaignUploadFile">Optional .md, .txt, or .docx</label>
+                <input id="campaignUploadFile" type="file" accept=".md,.txt,.docx">
+            </div>
+            <div class="upload-status" id="campaignUploadStatus"></div>
+            <div class="modal-actions">
+                <button type="button" id="campaignUploadCancel">Cancel</button>
+                <button type="button" class="primary" id="campaignUploadSubmit">Submit</button>
+            </div>
+        </div>
+    </div>
+
     <!-- ── Input Bar ───────────────────────────────────────────── -->
     <footer class="input-bar" id="inputBar">
+        <button class="campaign-upload-btn" id="campaignUploadBtn" type="button" hidden>Upload Inputs</button>
         <input type="text" class="input-field" id="inputField" placeholder="Ask Jeff anything about your startup..."
             autocomplete="off">
         <button class="send-btn" id="sendBtn" title="Send message">→</button>
@@ -668,6 +807,7 @@
         // ── State ────────────────────────────────────────────────────────────
         let currentMode = 'investor';
         let isStreaming = false;
+        let campaignInputs = {};
 
         // Per-mode session IDs — each mode has its own LangChain memory on the server.
         // Switching modes preserves each mode's conversation independently.
@@ -710,13 +850,19 @@
         const closeOverlay = document.getElementById('closeOverlay');
         const reopenBtn = document.getElementById('reopenBtn');
         const quotaStatus = document.getElementById('quotaStatus');
+        const campaignUploadBtn = document.getElementById('campaignUploadBtn');
+        const campaignUploadModal = document.getElementById('campaignUploadModal');
+        const campaignUploadCancel = document.getElementById('campaignUploadCancel');
+        const campaignUploadSubmit = document.getElementById('campaignUploadSubmit');
+        const campaignUploadStatus = document.getElementById('campaignUploadStatus');
+        const campaignUploadFile = document.getElementById('campaignUploadFile');
 
         // ── Welcome Messages (per mode) ─────────────────────────────────────
         const welcomeMessages = {
             investor: "Hi, I'm Jeff. Let's build your investor story. What stage are you at, and who are you trying to reach?",
             business_model: "Hi, I'm Jeff. Let's design your business model. Tell me what you're building and who pays for it.",
             customer: "Hi, I'm Jeff. Let's get inside your customer's head. Who is the person whose life you're trying to make better?",
-            campaign_builder: "Hi, I'm Jeff. Let's build your campaign. What's your one-line company description?",
+            campaign_builder: "Hi, I'm Jeff. Let's turn your startup into a JustStartUp campaign. I'll pull what I can from your other conversations — Business Model, Customer, Financial — and ask you to fill in the rest. Want to upload a refined brief, or shall we walk through it together?",
             financial: "Hi, I'm Jeff. Let's run the numbers. What's your current MRR, burn rate, or the financial question on your mind?"
         };
 
@@ -794,6 +940,54 @@
             return div.innerHTML;
         }
 
+        function updateCampaignControls() {
+            campaignUploadBtn.hidden = currentMode !== 'campaign_builder';
+        }
+
+        function collectCampaignInputs() {
+            const fields = {
+                business_model: document.getElementById('campaignBusinessModel').value.trim(),
+                target_users: document.getElementById('campaignTargetUsers').value.trim(),
+                demographics: document.getElementById('campaignDemographics').value.trim(),
+                financial_plan: document.getElementById('campaignFinancialPlan').value.trim()
+            };
+            return Object.fromEntries(Object.entries(fields).filter(([, value]) => value));
+        }
+
+        async function readCampaignFile(file) {
+            if (!file) return '';
+            const name = file.name.toLowerCase();
+            if (name.endsWith('.txt') || name.endsWith('.md')) {
+                return await file.text();
+            }
+            if (name.endsWith('.docx')) {
+                if (typeof mammoth === 'undefined') {
+                    throw new Error('DOCX reader unavailable. Paste the text or upload .txt/.md.');
+                }
+                const result = await mammoth.extractRawText({ arrayBuffer: await file.arrayBuffer() });
+                return result.value || '';
+            }
+            throw new Error('Upload .md, .txt, or .docx only.');
+        }
+
+        function campaignUploadMessage(inputs, fileName, fileText) {
+            const lines = ['[CAMPAIGN_INPUTS_UPLOAD]'];
+            const labels = {
+                business_model: 'Business Model',
+                target_users: 'Target Users',
+                demographics: 'Demographics',
+                financial_plan: 'Financial Plan'
+            };
+            Object.entries(labels).forEach(([key, label]) => {
+                if (inputs[key]) lines.push(`${label}:\n${inputs[key]}`);
+            });
+            if (fileText) {
+                lines.push(`Uploaded File: ${fileName}`);
+                lines.push(fileText);
+            }
+            return lines.join('\n\n');
+        }
+
         // ── Markdown Renderer ───────────────────────────────────────────────
         // Uses marked.js to convert Markdown to formatted HTML.
         // Called after streaming completes to render the final response.
@@ -829,7 +1023,27 @@
             if (jsonBlock) {
                 try { return JSON.parse(jsonBlock[1]); } catch (e) { /* fall through */ }
             }
+            const campaignJson = campaignJsonFromText(text);
+            if (campaignJson) return campaignJson;
             return { content: text, mode: currentMode, exported_at: new Date().toISOString() };
+        }
+
+        function campaignJsonFromText(text) {
+            const stripped = text.trim();
+            const fenced = stripped.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/i);
+            const candidate = fenced ? fenced[1].trim() : stripped;
+            const starts = [...candidate].map((char, index) => ({ char, index })).filter(({ char }) => char === '{' || char === '[');
+            for (const { char, index } of starts) {
+                const endChar = char === '{' ? '}' : ']';
+                const end = candidate.lastIndexOf(endChar);
+                if (end <= index) continue;
+                try {
+                    return JSON.parse(candidate.slice(index, end + 1));
+                } catch (e) {
+                    /* try next candidate */
+                }
+            }
+            return null;
         }
 
         async function downloadExport(endpoint, extension, text) {
@@ -857,16 +1071,20 @@
             URL.revokeObjectURL(url);
         }
 
-        function attachExportActions(msg, text) {
+        function attachExportActions(msg, text, mode = currentMode) {
             if (!msg) return;
             msg.dataset.exportText = text;
             if (msg.querySelector('.message-actions')) return;
+
+            const campaignJson = mode === 'campaign_builder' ? campaignJsonFromText(text) : null;
+            msg.dataset.campaignJson = campaignJson ? JSON.stringify(campaignJson) : '';
 
             const actions = document.createElement('div');
             actions.className = 'message-actions';
             actions.innerHTML = `
                 <button class="export-btn" type="button" data-export="xlsx">Excel</button>
                 <button class="export-btn" type="button" data-export="pdf">PDF</button>
+                ${campaignJson ? '<button class="export-btn" type="button" data-export="campaign">Download Campaign JSON</button>' : ''}
             `;
 
             msg.appendChild(actions);
@@ -884,17 +1102,22 @@
 
         // ── Backend Streaming (OpenAI Agents via FastAPI) ────────────────────
 
-        async function streamFromBackend(mode, message, bubble) {
+        async function streamFromBackend(mode, message, bubble, campaignInputsForRequest = null) {
+            const body = {
+                message: message,
+                mode: mode,
+                session_id: sessionId,
+                ...(authToken ? {} : { user_id: userId })
+            };
+            if (mode === 'campaign_builder' && campaignInputsForRequest && Object.keys(campaignInputsForRequest).length) {
+                body.campaign_inputs = campaignInputsForRequest;
+            }
+
             try {
                 const response = await fetch(`${API_BASE_URL}/chat`, {
                     method: 'POST',
                     headers: jsonHeaders(),
-                    body: JSON.stringify({
-                        message: message,
-                        mode: mode,
-                        session_id: sessionId,
-                        ...(authToken ? {} : { user_id: userId })
-                    })
+                    body: JSON.stringify(body)
                 });
 
                 updateQuotaFromHeaders(response.headers);
@@ -924,7 +1147,7 @@
 
                 // Render final Markdown after streaming completes
                 bubble.innerHTML = renderMarkdown(fullResponse);
-                attachExportActions(bubble.closest('.message'), fullResponse);
+                attachExportActions(bubble.closest('.message'), fullResponse, mode);
 
                 // Memory is saved server-side by LangChain — no client tracking needed
                 return true;
@@ -960,10 +1183,11 @@
 
         // ── Unified Streaming Handler ───────────────────────────────────────
 
-        async function streamResponse(mode, message) {
+        async function streamResponse(mode, message, campaignInputsForRequest = null) {
             isStreaming = true;
             inputField.disabled = true;
             sendBtn.disabled = true;
+            campaignUploadBtn.disabled = true;
 
             showTypingIndicator();
 
@@ -981,11 +1205,12 @@
             chatArea.appendChild(msg);
             const bubble = msg.querySelector('.message-bubble');
 
-            await streamFromBackend(mode, message, bubble);
+            await streamFromBackend(mode, message, bubble, campaignInputsForRequest);
 
             isStreaming = false;
             inputField.disabled = false;
             sendBtn.disabled = false;
+            campaignUploadBtn.disabled = false;
             inputField.focus();
         }
 
@@ -999,7 +1224,7 @@
 
             addUserMessage(message);
             inputField.value = '';
-            streamResponse(currentMode, message);
+            streamResponse(currentMode, message, currentMode === 'campaign_builder' ? campaignInputs : null);
         }
 
         // ── Mode Switching ──────────────────────────────────────────────────
@@ -1016,6 +1241,7 @@
             // Switch to the new mode
             currentMode = mode;
             sessionId = modeSessions[mode];
+            updateCampaignControls();
 
             // Update active button
             modeButtons.forEach(btn => {
@@ -1089,6 +1315,44 @@
             btn.addEventListener('click', () => switchMode(btn.dataset.mode));
         });
 
+        campaignUploadBtn.addEventListener('click', () => {
+            campaignUploadStatus.textContent = '';
+            campaignUploadModal.hidden = false;
+        });
+
+        campaignUploadCancel.addEventListener('click', () => {
+            campaignUploadModal.hidden = true;
+        });
+
+        campaignUploadModal.addEventListener('click', (event) => {
+            if (event.target === campaignUploadModal) campaignUploadModal.hidden = true;
+        });
+
+        campaignUploadSubmit.addEventListener('click', async () => {
+            if (isStreaming) return;
+            campaignUploadSubmit.disabled = true;
+            campaignUploadStatus.textContent = '';
+            try {
+                const inputs = collectCampaignInputs();
+                const file = campaignUploadFile.files[0];
+                const fileText = await readCampaignFile(file);
+                if (!Object.keys(inputs).length && !fileText.trim()) {
+                    campaignUploadStatus.textContent = 'Add at least one input or file.';
+                    return;
+                }
+
+                campaignInputs = inputs;
+                const uploadMessage = campaignUploadMessage(inputs, file?.name || '', fileText.trim());
+                campaignUploadModal.hidden = true;
+                addUserMessage('Uploaded campaign inputs.');
+                await streamResponse('campaign_builder', uploadMessage, campaignInputs);
+            } catch (error) {
+                campaignUploadStatus.textContent = error.message;
+            } finally {
+                campaignUploadSubmit.disabled = false;
+            }
+        });
+
         // Send button
         sendBtn.addEventListener('click', sendMessage);
 
@@ -1103,6 +1367,7 @@
             try {
                 if (exportType === 'xlsx') await downloadExport('/export/xlsx', 'xlsx', text);
                 if (exportType === 'pdf') await downloadExport('/export/pdf', 'pdf', text);
+                if (exportType === 'campaign') await downloadExport('/export/campaign', 'json', message?.dataset.campaignJson || text);
             } catch (error) {
                 console.warn(error.message);
             } finally {
@@ -1133,6 +1398,7 @@
         });
 
         // ── Initialize ──────────────────────────────────────────────────────
+        updateCampaignControls();
         addJeffMessage(welcomeMessages[currentMode]);
         inputField.focus();
     </script>

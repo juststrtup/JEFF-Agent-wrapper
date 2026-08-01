@@ -127,7 +127,7 @@ function buildGuardrailFailOutput(results: any[]) {
 
 export const jeff = new Agent({
   name: "Jeff",
-  instructions: "[REDACTED — CONFIGURED BY RAJ ON OPENAI PLATFORM]",
+  instructions: "[process.env.JEFF_SYSTEM_PROMPT]",
   model: process.env.JEFF_AGENT_MODEL || "gpt-3.5-turbo",
   tools: [
     webSearchPreview,
@@ -140,7 +140,7 @@ export const jeff = new Agent({
 
 export const informer = new Agent({
   name: "Informer",
-  instructions: "[REDACTED — CONFIGURED BY RAJ ON OPENAI PLATFORM]",
+  instructions: "[process.env.INFORMER_SYSTEM_PROMPT]",
   model: process.env.INFORMER_AGENT_MODEL || "gpt-3.5-turbo",
   
   modelSettings: {
