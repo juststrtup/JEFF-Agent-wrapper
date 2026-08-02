@@ -447,7 +447,7 @@ def validate_campaign_registration(payload: Any) -> dict[str, Any]:
     if not 3 <= len(tags) <= 7:
         raise HTTPException(status_code=502, detail="Campaign JSON must contain between 3 and 7 tags.")
 
-    tag_pattern = re.compile(r"^[a-z]+(?:-[a-z]+)+$")
+    tag_pattern = re.compile(r"^[a-z]+(?:-[a-z]+)*$")
     for tag in tags:
         if not isinstance(tag, str):
             raise HTTPException(status_code=502, detail="Campaign JSON tags must all be strings.")
