@@ -46,7 +46,7 @@ Authenticated endpoints:
 - `GET /history/{session_id}`
 - `POST /export/xlsx`
 - `POST /export/pdf`
-
+- `POST /export/campaign`
 Public endpoints:
 
 - `GET /`
@@ -140,6 +140,36 @@ curl -X GET https://jeff-agent-wrapper.onrender.com/chat
 ```
 *Expected Response:* Returns a helpful JSON body explaining the required `POST` JSON format.
 
+--- 
+
+#### G. Campaign Registration Export (POST /export/campaign)
+
+```bash
+curl -X POST https://jeff-agent-wrapper.onrender.com/export/campaign \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <jwt>" \
+  -d '{
+    "payload": {
+      "short_description": "AI task planner for students.",
+      "long_description": "An AI-powered productivity platform that helps students plan coursework and prepare for placements.",
+      "narrative": "Students struggle to stay consistent. Our platform combines planning, coaching, and accountability into one experience.",
+      "funding": {
+        "min_funds": 500000,
+        "funding_goal": 1000000,
+        "max_funds": 2000000,
+        "currency": "INR"
+      },
+      "tags": [
+        "edtech",
+        "student-productivity",
+        "india"
+      ]
+    },
+    "filename": "campaign"
+  }' \
+  --output campaign.json
+```
+
 ---
 
 ## Project Status
@@ -154,12 +184,12 @@ curl -X GET https://jeff-agent-wrapper.onrender.com/chat
 - **PostgreSQL Persistence**: Replaced in-memory session history and token usage storage with PostgreSQL using SQLAlchemy Async.
 - **Persistent Per-Mode Sessions**: Session IDs are persisted per interaction mode in the frontend and synchronized with PostgreSQL, allowing conversations to survive browser refreshes while maintaining independent histories for each Jeff mode.
 - **JWT Authentication**: Feature-flagged WordPress JWT verification with authenticated user isolation, protected API endpoints, and local JWT generation utility for development.
-
+- **Campaign Builder**: Added cross-mode context retrieval, uploaded input overrides, Campaign Registration JSON validation, and downloadable JSON export.
 
 ### What's Pending & Known Limitations
 - **Multi-instance scaling**: Future support for distributed caching (e.g. Redis) if horizontal scaling is required.
 - **Concurrent quota synchronization**: Future support for transactional locking or equivalent concurrency control to ensure accurate quota enforcement under high concurrent load.
-- **System Prompts**: OpenAI system prompts for Campaign Builder are managed on the OpenAI platform dashboard, not inside this repository.
+- **System Prompts**: Jeff and Informer system prompts are supplied through environment variables (JEFF_SYSTEM_PROMPT, INFORMER_SYSTEM_PROMPT) and managed outside this repository.
 
 ### Known-Broken
 - None. (All endpoints are fully operational).
@@ -171,3 +201,4 @@ curl -X GET https://jeff-agent-wrapper.onrender.com/chat
 - **File Exports**: Checked downloaded `.xlsx` and `.pdf` files locally to ensure columns and styles compile correctly.
 - **Hosted Agent Tools**: Verified automatic hosted tool invocation (e.g., Web Search) using the configured production model.
 - **Session Persistence**: Verified that browser refreshes preserve conversation history while maintaining isolated histories for each interaction mode.
+- **Campaign Builder**: Verified cross-mode context retrieval, uploaded input overrides, Campaign Registration JSON validation, and downloadable `.json` export through the `/export/campaign` endpoint.

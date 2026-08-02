@@ -73,6 +73,7 @@ class ChatRequest(BaseModel):
     mode: str
     session_id: str = "default_session"
     user_id: str | None = None
+    campaign_inputs: dict[str, str] | None = None
 
 
 class ExportRequest(BaseModel):
@@ -80,6 +81,20 @@ class ExportRequest(BaseModel):
     content: Any | None = None
     filename: str = "jeff-export"
     title: str | None = None
+
+
+CAMPAIGN_CONTEXT_SOURCES = {
+    "business_model": "Business Model",
+    "customer": "Customer",
+    "financial": "Financial",
+}
+
+CAMPAIGN_INPUT_FIELDS = {
+    "business_model": "Business Model",
+    "target_users": "Target Users",
+    "demographics": "Demographics",
+    "financial_plan": "Financial Plan",
+}
 
 
 async def _sidecar_is_ready() -> bool:
@@ -177,6 +192,69 @@ async def get_session_history(
     return list(result.scalars())
 
 
+async def get_active_mode_history(db: AsyncSession, user_id: str, mode: str) -> list[Message]:
+    now = utc_now()
+    chat_session = await db.get(ChatSession, {"user_id": user_id, "mode": mode})
+    if (
+        chat_session is None
+        or (now - chat_session.last_active_at).total_seconds() > SESSION_TTL_SECONDS
+    ):
+        return []
+
+    result = await db.execute(
+        select(Message)
+        .where(Message.user_id == user_id, Message.mode == mode)
+        .order_by(Message.created_at, Message.id)
+    )
+    return list(result.scalars())
+
+
+def messages_as_text(messages: list[Message]) -> str:
+    return "\n".join(f"{msg.role}: {msg.content}" for msg in messages if msg.content.strip())
+
+
+def clean_campaign_inputs(campaign_inputs: dict[str, str] | None) -> dict[str, str]:
+    if not isinstance(campaign_inputs, dict):
+        return {}
+    return {
+        key: str(campaign_inputs.get(key, "")).strip()
+        for key in CAMPAIGN_INPUT_FIELDS
+        if str(campaign_inputs.get(key, "")).strip()
+    }
+
+
+async def campaign_builder_context(db: AsyncSession, user_id: str, campaign_inputs: dict[str, str] | None) -> str:
+    uploaded = clean_campaign_inputs(campaign_inputs)
+    histories = {
+        mode: messages_as_text(await get_active_mode_history(db, user_id, mode))
+        for mode in CAMPAIGN_CONTEXT_SOURCES
+    }
+
+    sections = [
+        "[CAMPAIGN_BUILDER_CONTEXT]",
+        "Use retrieved context as background. Uploaded inputs are authoritative and override retrieved context for the same field.",
+    ]
+
+    field_sources = [
+        ("business_model", "business_model"),
+        ("target_users", "customer"),
+        ("demographics", "customer"),
+        ("financial_plan", "financial"),
+    ]
+    for field, source_mode in field_sources:
+        label = CAMPAIGN_INPUT_FIELDS[field]
+        value = uploaded.get(field) or histories.get(source_mode)
+        source = "uploaded" if uploaded.get(field) else f"retrieved:{CAMPAIGN_CONTEXT_SOURCES[source_mode]}"
+        if value:
+            sections.append(f"{label} ({source}):\n{value}")
+
+    if not any(section.startswith(tuple(CAMPAIGN_INPUT_FIELDS.values())) for section in sections):
+        sections.append("No prior campaign source context was found.")
+
+    sections.append("[/CAMPAIGN_BUILDER_CONTEXT]")
+    return "\n\n".join(sections)
+
+
 def quota_key_for(request: ChatRequest, current_user: CurrentUser) -> str:
     if current_user.user_id:
         return current_user.user_id
@@ -272,6 +350,110 @@ def export_payload(request: ExportRequest) -> Any:
     payload = request.payload if request.payload is not None else request.content
     if payload is None:
         raise HTTPException(status_code=422, detail="Either payload or content is required.")
+    return payload
+
+
+def strip_markdown_fences(text: str) -> str:
+    stripped = text.strip()
+    fence = re.fullmatch(r"```(?:json)?\s*([\s\S]*?)\s*```", stripped, re.IGNORECASE)
+    return fence.group(1).strip() if fence else stripped
+
+
+def repair_simple_json(text: str) -> str:
+    repaired = text.replace("“", '"').replace("”", '"').replace("‘", "'").replace("’", "'")
+    return re.sub(r",\s*([}\]])", r"\1", repaired)
+
+
+def parse_campaign_json(payload: Any) -> Any:
+    if isinstance(payload, (dict, list)):
+        return payload
+    if not isinstance(payload, str):
+        raise HTTPException(status_code=502, detail="Campaign response was not valid JSON.")
+
+    text = strip_markdown_fences(payload)
+    decoder = json.JSONDecoder()
+    last_error: json.JSONDecodeError | None = None
+
+    for index, char in enumerate(text):
+        if char not in "{[":
+            continue
+        try:
+            parsed, _ = decoder.raw_decode(text[index:])
+            if isinstance(parsed, str):
+                parsed = parse_campaign_json(parsed)
+            return parsed
+        except json.JSONDecodeError as exc:
+            last_error = exc
+        try:
+            parsed, _ = decoder.raw_decode(repair_simple_json(text[index:]))
+            if isinstance(parsed, str):
+                parsed = parse_campaign_json(parsed)
+            return parsed
+        except json.JSONDecodeError as exc:
+            last_error = exc
+
+    try:
+        parsed = json.loads(text)
+        if isinstance(parsed, str):
+            return parse_campaign_json(parsed)
+        return parsed
+    except json.JSONDecodeError as exc:
+        last_error = exc
+    try:
+        parsed = json.loads(repair_simple_json(text))
+        if isinstance(parsed, str):
+            return parse_campaign_json(parsed)
+        return parsed
+    except json.JSONDecodeError as exc:
+        last_error = exc
+
+    detail = "Campaign response was not valid JSON."
+    if last_error:
+        detail = f"{detail} {last_error.msg}"
+    raise HTTPException(status_code=502, detail=detail)
+
+
+def validate_campaign_registration(payload: Any) -> dict[str, Any]:
+    if not isinstance(payload, dict):
+        raise HTTPException(status_code=502, detail="Campaign JSON must be an object.")
+
+    required_fields = ["short_description", "long_description", "narrative", "funding", "tags"]
+    missing = [field for field in required_fields if field not in payload]
+    if missing:
+        raise HTTPException(status_code=502, detail=f"Campaign JSON is missing required fields: {', '.join(missing)}.")
+
+    funding = payload["funding"]
+    if not isinstance(funding, dict):
+        raise HTTPException(status_code=502, detail="Campaign JSON field 'funding' must be an object.")
+
+    funding_fields = ["min_funds", "funding_goal", "max_funds", "currency"]
+    missing_funding = [field for field in funding_fields if field not in funding]
+    if missing_funding:
+        raise HTTPException(status_code=502, detail=f"Campaign JSON funding is missing required fields: {', '.join(missing_funding)}.")
+
+    for field in ["min_funds", "funding_goal", "max_funds"]:
+        if not isinstance(funding[field], (int, float)) or isinstance(funding[field], bool):
+            raise HTTPException(status_code=502, detail=f"Campaign JSON funding field '{field}' must be numeric.")
+
+    if funding["currency"] != "INR":
+        raise HTTPException(status_code=502, detail="Campaign JSON funding currency must be INR.")
+
+    if not funding["min_funds"] < funding["funding_goal"] < funding["max_funds"]:
+        raise HTTPException(status_code=502, detail="Campaign JSON funding must satisfy min_funds < funding_goal < max_funds.")
+
+    tags = payload["tags"]
+    if not isinstance(tags, list):
+        raise HTTPException(status_code=502, detail="Campaign JSON field 'tags' must be an array.")
+    if not 3 <= len(tags) <= 7:
+        raise HTTPException(status_code=502, detail="Campaign JSON must contain between 3 and 7 tags.")
+
+    tag_pattern = re.compile(r"^[a-z]+(?:-[a-z]+)*$")
+    for tag in tags:
+        if not isinstance(tag, str):
+            raise HTTPException(status_code=502, detail="Campaign JSON tags must all be strings.")
+        if tag != tag.lower() or not tag_pattern.fullmatch(tag):
+            raise HTTPException(status_code=502, detail="Campaign JSON tags must be lowercase kebab-case strings.")
+
     return payload
 
 
@@ -383,9 +565,14 @@ async def chat(request: ChatRequest, current_user: CurrentUser = Depends(get_cur
             },
         )
 
+    campaign_context = ""
     async with AsyncSessionLocal() as db:
         chat_history = await get_session_history(db, quota_key, request.mode, request.session_id)
+        if request.mode == "campaign_builder":
+            campaign_context = await campaign_builder_context(db, quota_key, request.campaign_inputs)
     messages = agent_history_from_session(chat_history)
+    if campaign_context:
+        messages.append({"role": "user", "content": [{"type": "input_text", "text": campaign_context}]})
     messages.append({"role": "user", "content": [{"type": "input_text", "text": request.message}]})
 
     payload = {"messages": messages, "mode": request.mode}
@@ -497,6 +684,28 @@ async def export_pdf(request: ExportRequest, current_user: CurrentUser = Depends
     return StreamingResponse(
         output,
         media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+@app.get("/export/campaign")
+@app.get("/export/campaign/")
+async def export_campaign_get():
+    raise HTTPException(
+        status_code=405,
+        detail="Method Not Allowed. The /export/campaign endpoint requires a POST request with a JSON payload (e.g., {'payload': ..., 'filename': '...'})."
+    )
+
+
+@app.post("/export/campaign")
+@app.post("/export/campaign/")
+async def export_campaign(request: ExportRequest, current_user: CurrentUser = Depends(get_current_user)):
+    payload = validate_campaign_registration(parse_campaign_json(export_payload(request)))
+    output = io.BytesIO(json.dumps(payload, ensure_ascii=False, indent=2).encode("utf-8"))
+    filename = safe_filename(request.filename or "campaign", "json")
+    return StreamingResponse(
+        output,
+        media_type="application/json",
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
 
