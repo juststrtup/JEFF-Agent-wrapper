@@ -752,6 +752,25 @@ async def get_history(session_id: str, current_user: CurrentUser = Depends(get_c
         "messages": messages,
     }
 
+@app.get("/quota")
+@app.get("/quota/")
+async def get_quota(current_user: CurrentUser = Depends(get_current_user), user_id: str | None = None):
+    quota_key = current_user.user_id or user_id
+
+    if not quota_key:
+        raise HTTPException(
+            status_code=400,
+            detail="Missing user_id."
+        )
+
+    async with AsyncSessionLocal() as db:
+        headers = await quota_headers(db, "", quota_key)
+
+    return {
+        "limit": int(headers["X-Tokens-Limit"]),
+        "remaining": int(headers["X-Tokens-Remaining"]),
+        "reset": int(headers["X-Tokens-Reset"])
+    }
 
 @app.get("/health")
 @app.get("/health/")

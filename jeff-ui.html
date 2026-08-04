@@ -1018,6 +1018,37 @@
             quotaStatus.textContent = `${Number(remaining).toLocaleString()} / ${Number(limit).toLocaleString()} tokens left · resets ${resetLabel}`;
         }
 
+        async function fetchQuota() {
+                try {
+                    const url = authToken
+                        ? `${API_BASE_URL}/quota`
+                        : `${API_BASE_URL}/quota?user_id=${encodeURIComponent(userId)}`;
+
+                    const response = await fetch(url, {
+                        headers: authToken
+                            ? { Authorization: `Bearer ${authToken}` }
+                            : {}
+                    });
+
+                    if (!response.ok) {
+                        quotaStatus.textContent = "Quota unavailable";
+                        return;
+                    }
+
+                    const quota = await response.json();
+
+                    const resetDate = new Date(quota.reset * 1000);
+
+                    quotaStatus.textContent =
+                        `${quota.remaining.toLocaleString()} / ${quota.limit.toLocaleString()} tokens left · resets ${resetDate.toLocaleTimeString([], {
+                            hour: "2-digit",
+                            minute: "2-digit"
+                        })}`;
+                } catch (err) {
+                    quotaStatus.textContent = "Quota unavailable";
+                }
+            }
+
         function structuredPayloadFromText(text) {
             const jsonBlock = text.match(/```json\s*([\s\S]*?)```/i);
             if (jsonBlock) {
@@ -1121,6 +1152,7 @@
                 });
 
                 updateQuotaFromHeaders(response.headers);
+
 
                 if (!response.ok) {
                     const retryAfter = response.headers.get('Retry-After');
@@ -1399,6 +1431,7 @@
 
         // ── Initialize ──────────────────────────────────────────────────────
         updateCampaignControls();
+        fetchQuota();
         addJeffMessage(welcomeMessages[currentMode]);
         inputField.focus();
     </script>
