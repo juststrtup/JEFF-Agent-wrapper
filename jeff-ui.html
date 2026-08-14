@@ -797,9 +797,10 @@
         // Auto-detect backend URL. If running locally on port 8080 (python -m http.server),
         // it falls back to the FastAPI localhost port 8000.
         // Otherwise, it uses the current domain (e.g., the Render deployment URL).
-        const API_BASE_URL = window.location.hostname === 'localhost' && window.location.port === '8080'
-            ? 'http://localhost:8000'
-            : window.location.origin;
+        const API_BASE_URL = window.API_BASE_URL || 
+         (window.location.hostname === 'localhost' && window.location.port === '8080'
+        ? 'http://localhost:8000'
+        : window.location.origin);
         const authToken = window.JEFF_JWT || localStorage.getItem('jeff_jwt') || '';
         const userId = localStorage.getItem('jeff_user_id') || crypto.randomUUID();
         localStorage.setItem('jeff_user_id', userId);
