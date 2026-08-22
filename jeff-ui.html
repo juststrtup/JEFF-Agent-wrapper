@@ -910,6 +910,27 @@
             scrollToBottom();
         }
 
+        // ── Conversation History ───────────────────────────────────────────
+
+        function renderHistory(messages, mode) {
+                chatArea.innerHTML = '';
+
+                if (!Array.isArray(messages) || messages.length === 0) {
+                    addJeffMessage(welcomeMessages[mode]);
+                    return;
+                }
+
+                for (const message of messages) {
+                    if (message.role === 'user') {
+                        addUserMessage(message.content);
+                    } else if (message.role === 'assistant') {
+                        addJeffMessage(message.content, true);
+                    }
+                }
+
+                scrollToBottom();
+            }
+
         function showTypingIndicator() {
             const msg = document.createElement('div');
             msg.className = 'message jeff';
@@ -1049,6 +1070,58 @@
                     quotaStatus.textContent = "Quota unavailable";
                 }
             }
+
+            async function fetchHistory(mode) {
+                    const historySessionId = modeSessions[mode];
+
+                    if (!historySessionId) {
+                        addJeffMessage(welcomeMessages[mode]);
+                        return;
+                    }
+
+                    let hasRetriedAfterRefresh = false;
+
+                    while (true) {
+                        try {
+                            const response = await fetch(
+                                `${API_BASE_URL}/history/${encodeURIComponent(historySessionId)}`,
+                                {
+                                    method: 'GET',
+                                    headers: authToken
+                                        ? { Authorization: `Bearer ${authToken}` }
+                                        : {}
+                                }
+                            );
+
+                            if (response.status === 401 && !hasRetriedAfterRefresh) {
+                                hasRetriedAfterRefresh = true;
+
+                                console.info('Jeff JWT expired while loading history. Refreshing token...');
+
+                                await refreshAuthToken();
+                                continue;
+                            }
+
+                            if (!response.ok) {
+                                throw new Error(`History fetch failed: HTTP ${response.status}`);
+                            }
+
+                            const data = await response.json();
+
+                            renderHistory(data.messages || [], mode);
+
+                            return;
+                        } catch (error) {
+                            console.warn('Unable to restore Jeff history:', error.message);
+
+                            // Don't leave the user staring at an empty chat.
+                            chatArea.innerHTML = '';
+                            addJeffMessage(welcomeMessages[mode]);
+
+                            return;
+                        }
+                    }
+                }
 
         function structuredPayloadFromText(text) {
             const jsonBlock = text.match(/```json\s*([\s\S]*?)```/i);
@@ -1284,14 +1357,16 @@
             // Fade transition
             chatArea.classList.add('fade-out');
 
-            setTimeout(() => {
-                // Restore cached chat UI for this mode, or show welcome message
+            setTimeout(async () => {
                 if (modeChatCache[mode]) {
                     chatArea.innerHTML = modeChatCache[mode];
-                } else {
-                    chatArea.innerHTML = '';
-                    addJeffMessage(welcomeMessages[mode]);
+                    chatArea.classList.remove('fade-out');
+                    scrollToBottom();
+                    return;
                 }
+
+                await fetchHistory(mode);
+
                 chatArea.classList.remove('fade-out');
                 scrollToBottom();
             }, 200);
@@ -1432,9 +1507,10 @@
 
         // ── Initialize ──────────────────────────────────────────────────────
         updateCampaignControls();
-        fetchQuota();
-        addJeffMessage(welcomeMessages[currentMode]);
-        inputField.focus();
+            fetchQuota();
+            fetchHistory(currentMode).finally(() => {
+                inputField.focus();
+            });
     </script>
 </body>
 
