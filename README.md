@@ -182,9 +182,10 @@ curl -X POST https://jeff-agent-wrapper.onrender.com/export/campaign \
 - **Campaign Builder Rename**: Updated the frontend and backend modes from `pitch_deck` to `campaign_builder`.
 - **Database Migrations**: Introduced Alembic for version-controlled schema management and database migrations. 
 - **PostgreSQL Persistence**: Replaced in-memory session history and token usage storage with PostgreSQL using SQLAlchemy Async.
-- **Persistent Per-Mode Sessions**: Session IDs are persisted per interaction mode in the frontend and synchronized with PostgreSQL, allowing conversations to survive browser refreshes while maintaining independent histories for each Jeff mode.
+- **Persistent Per-Mode Sessions**: Session IDs are persisted per interaction mode in the frontend and synchronized with PostgreSQL, maintaining independent conversation histories for each Jeff mode.
 - **JWT Authentication**: Feature-flagged WordPress JWT verification with authenticated user isolation, protected API endpoints, and local JWT generation utility for development.
 - **Campaign Builder**: Added cross-mode context retrieval, uploaded input overrides, Campaign Registration JSON validation, and downloadable JSON export.
+- **Frontend History Restoration**: Added history hydration during Jeff UI initialization, restoring persisted user and assistant messages from PostgreSQL after browser refreshes. Expired JWTs are refreshed and the history request retried when necessary, while new sessions continue to display the mode-specific welcome message.
 
 ### What's Pending & Known Limitations
 - **Multi-instance scaling**: Future support for distributed caching (e.g. Redis) if horizontal scaling is required.
@@ -200,5 +201,5 @@ curl -X POST https://jeff-agent-wrapper.onrender.com/export/campaign \
 - **Quota Enforcements**: Validated `429` status responses and header balance deductions.
 - **File Exports**: Checked downloaded `.xlsx` and `.pdf` files locally to ensure columns and styles compile correctly.
 - **Hosted Agent Tools**: Verified automatic hosted tool invocation (e.g., Web Search) using the configured production model.
-- **Session Persistence**: Verified that browser refreshes preserve conversation history while maintaining isolated histories for each interaction mode.
+- **Session Persistence & History Restoration**: Verified that browser refreshes restore persisted conversation history while maintaining isolated histories for each interaction mode. Also verified that previously persisted conversations remain retrievable after logout/login.
 - **Campaign Builder**: Verified cross-mode context retrieval, uploaded input overrides, Campaign Registration JSON validation, and downloadable `.json` export through the `/export/campaign` endpoint.
