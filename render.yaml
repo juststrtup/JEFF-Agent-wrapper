@@ -32,7 +32,7 @@ services:
       - key: INFORMER_SYSTEM_PROMPT
         sync: false
       - key: JEFF_AGENT_MODEL
-        value: "gpt-4o-mini"
+        value: "gpt-6.1-terra"
       - key: INFORMER_AGENT_MODEL
         value: "gpt-4o-mini"
       - key: CORS_ORIGINS

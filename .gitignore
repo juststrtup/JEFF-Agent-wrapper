@@ -12,4 +12,6 @@ dist/
 build/
 *.log
 *.env
-Agents.md
+AGENTS.md
+Short-plan.txt
+agent_chat_final.html
