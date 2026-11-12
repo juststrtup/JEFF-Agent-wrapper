@@ -17,9 +17,13 @@ The application uses a **FastAPI Proxy + Node.js Sidecar** design pattern:
 
 ## Model Configuration
 
-This system integrates with OpenAI API models configured via environment variables:
-- **Core Agent Executions**: Configured to run on **`gpt-4o-mini`** (customizable via `JEFF_AGENT_MODEL` and `INFORMER_AGENT_MODEL` env vars).
-- **Guardrails Moderation & Jailbreak Checks**: Configured to run on **`gpt-4.1-mini`** for high-performance classification. 
+Agent model IDs are configured through environment variables. The checked-in Render configuration sets:
+
+- **Jeff**: `JEFF_AGENT_MODEL=gpt-6.1-terra`.
+- **Informer**: `INFORMER_AGENT_MODEL=gpt-4o-mini`.
+- **Guardrails moderation and jailbreak checks**: `gpt-4.1-mini`.
+
+`agent.ts` still falls back to `gpt-3.5-turbo` if either Jeff or Informer model setting is missing. The planned scorer uses `gpt-6-luna` through a future `JEFF_SCORER_MODEL` setting once scorer code is added. The target reasoning efforts are medium for Jeff and low for scoring; Jeff’s agent does not currently apply an effort setting. The planned Jeff output limit is 900 tokens, configurable with `JEFF_MAX_OUTPUT_TOKENS`; cap-hit reporting requires the provider completion or truncation signal.
 
 --- 
 
@@ -28,6 +32,13 @@ This system integrates with OpenAI API models configured via environment variabl
 - PostgreSQL
 - SQLAlchemy Async
 - Alembic migrations
+
+The existing `sessions`, `messages`, and `token_usage` tables store per-mode chat history and the rolling customer quota. The startup-understanding foundation adds:
+
+- `slot_states`: one row per user for the latest slot scores, vision stages, thinnest slot, and aggregate percentages.
+- `understanding_history`: per-user, per-mode readings used to restore the latest 24 graph points.
+
+Migration `0002_understanding_state` creates these tables and the history lookup index. The fixed slot and stage weights and percentage calculations live in `understanding.py`; live scoring and API integration are still pending.
 
 ---
 
@@ -52,6 +63,11 @@ Public endpoints:
 - `GET /`
 - `GET /health`
 
+Planned endpoints (not yet available):
+
+- `GET /usage` — current user’s remaining Jeff tokens and reset time.
+- `GET /understanding` — aggregate scores, slot and stage details, and recent graph readings.
+
 Generate a local test token:
 
 ```bash
@@ -70,6 +86,20 @@ Jeff is configured with OpenAI hosted tools including:
 - Code Interpreter
 
 Tool availability depends on the configured model and OpenAI account permissions.
+
+---
+
+## Frontend Integration
+
+`agent_chat_final.html` is a standalone design and behavior prototype. The production change targets the WordPress frontend served by `[jeff_pro]`; port the interface into that plugin and preserve JWT/API URL injection, silent refresh, authenticated history, and streamed replies. The prototype itself is not a direct replacement for this repository’s `jeff-ui.html`.
+
+The UI maps six personas to backend modes: `orb` → `general`, `investor`, `customer`, `business` → `business_model`, `campaign` → `campaign_builder`, and `financial`. General uses Jeff’s base instructions and has an independent per-user history. Extract inline images into optimized WebP assets, preload the aurora and active persona, and lazy-load other personas. The first-load target is below 400 KB. The plugin that serves `[jeff_pro]` is maintained outside this repository.
+
+## Startup Insights
+
+Startup understanding is shared across a user’s modes and is based only on founder statements. The GPT-6 Luna scorer runs asynchronously after every 2–3 founder messages and must not delay a Jeff reply. It carries prior scores forward, can lower scores and vision stages when evidence changes, and leaves prior readings intact on failure.
+
+The scorer uses 11 fixed startup slots and the weighted rubric, and the vision metric uses the fixed seven-stage ladder. `slot_states` stores the latest per-user slot and stage state; `understanding_history` stores per-user, per-mode readings for graph history. The persistence models, migration, and deterministic weighted formula helpers are implemented. Live scoring and the authenticated `GET /understanding` endpoint remain pending.
 
 ---
 
@@ -170,6 +200,20 @@ curl -X POST https://jeff-agent-wrapper.onrender.com/export/campaign \
   --output campaign.json
 ```
 
+#### H. Startup Insight Formula Checks
+
+Run the focused weighted-formula tests:
+
+```bash
+.venv/bin/python -m unittest discover -s tests -p test_understanding.py -v
+```
+
+Check the applied schema revision in the configured test database:
+
+```bash
+.venv/bin/alembic current
+```
+
 ---
 
 ## Project Status
@@ -186,14 +230,16 @@ curl -X POST https://jeff-agent-wrapper.onrender.com/export/campaign \
 - **JWT Authentication**: Feature-flagged WordPress JWT verification with authenticated user isolation, protected API endpoints, and local JWT generation utility for development.
 - **Campaign Builder**: Added cross-mode context retrieval, uploaded input overrides, Campaign Registration JSON validation, and downloadable JSON export.
 - **Frontend History Restoration**: Added history hydration during Jeff UI initialization, restoring persisted user and assistant messages from PostgreSQL after browser refreshes. Expired JWTs are refreshed and the history request retried when necessary, while new sessions continue to display the mode-specific welcome message.
+- **Startup Insight Foundation**: Added per-user slot state and per-user/per-mode history models, Alembic migration `0002_understanding_state`, and the fixed weighted percentage helpers.
 
 ### What's Pending & Known Limitations
 - **Multi-instance scaling**: Future support for distributed caching (e.g. Redis) if horizontal scaling is required.
 - **Concurrent quota synchronization**: Future support for transactional locking or equivalent concurrency control to ensure accurate quota enforcement under high concurrent load.
 - **System Prompts**: Jeff and Informer system prompts are supplied through environment variables (JEFF_SYSTEM_PROMPT, INFORMER_SYSTEM_PROMPT) and managed outside this repository.
+- **Jeff Pro UI and Startup Scoring**: The prototype has not yet been ported to the shortcode frontend. Live Luna scoring, the planned `/usage` and `/understanding` endpoints, and cache/cap-hit usage telemetry are also pending.
 
 ### Known-Broken
-- None. (All endpoints are fully operational).
+- None in the existing deployed API. The planned endpoints above are not available yet.
 
 ### What We Tested & How
 - **Health Checks**: Verified that `/health` resolves with both FastAPI and sidecar active.
@@ -203,3 +249,4 @@ curl -X POST https://jeff-agent-wrapper.onrender.com/export/campaign \
 - **Hosted Agent Tools**: Verified automatic hosted tool invocation (e.g., Web Search) using the configured production model.
 - **Session Persistence & History Restoration**: Verified that browser refreshes restore persisted conversation history while maintaining isolated histories for each interaction mode. Also verified that previously persisted conversations remain retrievable after logout/login.
 - **Campaign Builder**: Verified cross-mode context retrieval, uploaded input overrides, Campaign Registration JSON validation, and downloadable `.json` export through the `/export/campaign` endpoint.
+- **Startup Insight Foundation**: The focused weighted-formula tests passed. Alembic applied `0002_understanding_state` to the configured test database and reported it as the current revision. A local health check with the configured sidecar returned `sidecar: ok` on port 8011 because port 8010 was occupied.
