@@ -2,7 +2,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import express from 'express';
 import { AgentInputItem, Runner, withTrace } from '@openai/agents';
-import { guardrailsConfig, runAndApplyGuardrails, jeff, informer } from './agent';
+import { guardrailsConfig, runAndApplyGuardrails, jeff, informer, JEFF_MAX_OUTPUT_TOKENS } from './agent';
 
 dotenv.config();
 dotenv.config({ path: '../.env', override: false });
@@ -61,13 +61,26 @@ function applyModeContext(messages: AgentInputItem[], mode: string) {
     .join('\n');
 }
 
-function usageToWireValue(usage: any) {
+function usageToWireValue(usage: any, outputCapHit: boolean) {
   return {
     requests: usage?.requests ?? 0,
     inputTokens: usage?.inputTokens ?? usage?.input_tokens ?? 0,
     outputTokens: usage?.outputTokens ?? usage?.output_tokens ?? 0,
     totalTokens: usage?.totalTokens ?? usage?.total_tokens ?? 0,
+    outputCapHit,
   };
+}
+
+function responseHitOutputLimit(response: any, outputLimit: number): boolean {
+  const providerResponse = response?.providerData;
+  if (
+    (providerResponse?.status === 'incomplete' &&
+      providerResponse?.incomplete_details?.reason === 'max_output_tokens') ||
+    providerResponse?.choices?.some((choice: any) => choice?.finish_reason === 'length') === true
+  ) return true;
+
+  const outputTokens = response?.usage?.outputTokens ?? response?.usage?.output_tokens;
+  return Number.isFinite(outputTokens) && outputTokens >= outputLimit;
 }
 
 app.get('/health', (_req, res) => {
@@ -123,7 +136,23 @@ app.post('/chat', async (req, res) => {
       }
 
       await streamedRun.completed;
-      writeEvent(res, { type: 'usage', usage: usageToWireValue(streamedRun.state.usage) });
+      const outputCapHit = activeAgent === jeff && streamedRun.rawResponses.some(
+        (response: any) => responseHitOutputLimit(response, JEFF_MAX_OUTPUT_TOKENS),
+      );
+      const usage = usageToWireValue(streamedRun.state.usage, outputCapHit);
+      if (activeAgent === jeff) {
+        console.info(JSON.stringify({
+          event: 'jeff_response_completed',
+          model: process.env.JEFF_AGENT_MODEL || 'unconfigured',
+          mode,
+          inputTokens: usage.inputTokens,
+          outputTokens: usage.outputTokens,
+          totalTokens: usage.totalTokens,
+          outputCapTokens: JEFF_MAX_OUTPUT_TOKENS,
+          outputCapHit,
+        }));
+      }
+      writeEvent(res, { type: 'usage', usage });
     });
   } catch (err: any) {
     const message = err?.message || String(err);
