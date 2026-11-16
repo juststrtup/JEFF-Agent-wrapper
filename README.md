@@ -23,7 +23,7 @@ Agent model IDs are configured through environment variables. The checked-in Ren
 - **Informer**: `INFORMER_AGENT_MODEL=gpt-4o-mini`.
 - **Guardrails moderation and jailbreak checks**: `gpt-4.1-mini`.
 
-`agent.ts` still falls back to `gpt-3.5-turbo` if either Jeff or Informer model setting is missing. The planned scorer uses `gpt-6-luna` through a future `JEFF_SCORER_MODEL` setting once scorer code is added. The target reasoning efforts are medium for Jeff and low for scoring; Jeff’s agent does not currently apply an effort setting. The planned Jeff output limit is 900 tokens, configurable with `JEFF_MAX_OUTPUT_TOKENS`; cap-hit reporting requires the provider completion or truncation signal.
+`agent.ts` still falls back to `gpt-3.5-turbo` if either Jeff or Informer model setting is missing. The Jeff agent applies `JEFF_AGENT_REASONING_EFFORT=medium` and `JEFF_MAX_OUTPUT_TOKENS=1500` by default; both values are configurable. Cap hits are identified from provider completion or truncation metadata and logged for Jeff replies. GPT-6 Luna remains the scorer target; scorer code and its `JEFF_SCORER_MODEL` setting are not wired yet.
 
 --- 
 
@@ -236,7 +236,7 @@ Check the applied schema revision in the configured test database:
 - **Multi-instance scaling**: Future support for distributed caching (e.g. Redis) if horizontal scaling is required.
 - **Concurrent quota synchronization**: Future support for transactional locking or equivalent concurrency control to ensure accurate quota enforcement under high concurrent load.
 - **System Prompts**: Jeff and Informer system prompts are supplied through environment variables (JEFF_SYSTEM_PROMPT, INFORMER_SYSTEM_PROMPT) and managed outside this repository.
-- **Jeff Pro UI and Startup Scoring**: The prototype has not yet been ported to the shortcode frontend. Live Luna scoring, the planned `/usage` and `/understanding` endpoints, and cache/cap-hit usage telemetry are also pending.
+- **Jeff Pro UI and Startup Scoring**: The prototype has not yet been ported to the shortcode frontend. Live Luna scoring, the planned `/usage` and `/understanding` endpoints, and cached-token telemetry are pending. Jeff’s 1,500-token cap and cap-hit logging are implemented in the sidecar.
 
 ### Known-Broken
 - None in the existing deployed API. The planned endpoints above are not available yet.

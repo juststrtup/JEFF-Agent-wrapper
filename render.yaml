@@ -18,7 +18,7 @@ services:
 
     envVars:
       - key: REQUIRE_AUTH
-        value: "false"
+        value: "true"
       - key: WP_JWT_SECRET
         sync: false
       - key: DATABASE_URL
@@ -33,6 +33,10 @@ services:
         sync: false
       - key: JEFF_AGENT_MODEL
         value: "gpt-6.1-terra"
+      - key: JEFF_AGENT_REASONING_EFFORT
+        value: medium
+      - key: JEFF_MAX_OUTPUT_TOKENS
+        value: 1500
       - key: INFORMER_AGENT_MODEL
         value: "gpt-4o-mini"
       - key: CORS_ORIGINS
@@ -46,4 +50,4 @@ services:
       - key: PYTHON_VERSION
         value: "3.11.0"
       - key: NODE_VERSION
-        value: "22.16.0"
+        value: "22.22.2"

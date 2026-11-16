@@ -52,6 +52,16 @@ export const guardrailsConfig = {
 };
 export const context = { guardrailLlm: client };
 
+const jeffReasoningEffort = process.env.JEFF_AGENT_REASONING_EFFORT || "medium";
+if (jeffReasoningEffort !== "low" && jeffReasoningEffort !== "medium") {
+  throw new Error("JEFF_AGENT_REASONING_EFFORT must be low or medium");
+}
+
+export const JEFF_MAX_OUTPUT_TOKENS = Number(process.env.JEFF_MAX_OUTPUT_TOKENS || "1500");
+if (!Number.isSafeInteger(JEFF_MAX_OUTPUT_TOKENS) || JEFF_MAX_OUTPUT_TOKENS < 1) {
+  throw new Error("JEFF_MAX_OUTPUT_TOKENS must be a positive integer");
+}
+
 function guardrailsHasTripwire(results: any[]): boolean {
     return (results ?? []).some((r) => r?.tripwireTriggered === true);
 }
@@ -134,6 +144,8 @@ export const jeff = new Agent({
     codeInterpreter
   ],
   modelSettings: {
+    reasoning: { effort: jeffReasoningEffort },
+    maxTokens: JEFF_MAX_OUTPUT_TOKENS,
     store: true
   }
 });
