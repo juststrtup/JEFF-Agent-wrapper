@@ -19,6 +19,7 @@ type StreamEvent =
   | { type: 'error'; message: string };
 
 const modeLabels: Record<string, string> = {
+  general: 'General',
   investor: 'Investor',
   business_model: 'Business Model',
   customer: 'Customer',
@@ -41,6 +42,7 @@ function getMessageText(message: AgentInputItem | undefined): string {
 }
 
 function applyModeContext(messages: AgentInputItem[], mode: string) {
+  if (mode === 'general') return;
   const lastMessage = messages[messages.length - 1] as any;
   const modeLabel = modeLabels[mode] || mode;
   const campaignNote =
@@ -61,12 +63,24 @@ function applyModeContext(messages: AgentInputItem[], mode: string) {
     .join('\n');
 }
 
-function usageToWireValue(usage: any, outputCapHit: boolean) {
+function usageToWireValue(usage: any, rawResponses: any[], outputCapHit: boolean) {
+  const inputTokens = usage?.inputTokens ?? usage?.input_tokens ?? 0;
+  const outputTokens = usage?.outputTokens ?? usage?.output_tokens ?? 0;
+  const rawTotalTokens = rawResponses.reduce((total, response) => {
+    const tokens = response?.rawUsage?.total_tokens;
+    return total + (Number.isSafeInteger(tokens) && tokens > 0 ? tokens : 0);
+  }, 0);
+  const totalTokens = Math.max(
+    usage?.totalTokens ?? usage?.total_tokens ?? 0,
+    inputTokens + outputTokens,
+    rawTotalTokens,
+  );
   return {
     requests: usage?.requests ?? 0,
-    inputTokens: usage?.inputTokens ?? usage?.input_tokens ?? 0,
-    outputTokens: usage?.outputTokens ?? usage?.output_tokens ?? 0,
-    totalTokens: usage?.totalTokens ?? usage?.total_tokens ?? 0,
+    inputTokens,
+    outputTokens,
+    totalTokens,
+    usageAvailable: totalTokens > 0,
     outputCapHit,
   };
 }
@@ -89,6 +103,8 @@ app.get('/health', (_req, res) => {
 
 app.post('/chat', async (req, res) => {
   const { messages, mode } = req.body;
+  let usageAvailable = false;
+  let activeModel = 'unresolved';
 
   if (!Array.isArray(messages) || messages.length === 0) {
     return res.status(400).json({ error: 'messages array is required' });
@@ -123,7 +139,10 @@ app.post('/chat', async (req, res) => {
       );
 
       const activeAgent = hasTripwire ? informer : jeff;
-      if (!hasTripwire) {
+      activeModel = hasTripwire
+        ? process.env.INFORMER_AGENT_MODEL || 'unconfigured'
+        : process.env.JEFF_AGENT_MODEL || 'unconfigured';
+      if (!hasTripwire && mode !== 'general') {
         applyModeContext(conversation, mode);
       }
 
@@ -139,7 +158,8 @@ app.post('/chat', async (req, res) => {
       const outputCapHit = activeAgent === jeff && streamedRun.rawResponses.some(
         (response: any) => responseHitOutputLimit(response, JEFF_MAX_OUTPUT_TOKENS),
       );
-      const usage = usageToWireValue(streamedRun.state.usage, outputCapHit);
+      const usage = usageToWireValue(streamedRun.state.usage, streamedRun.rawResponses, outputCapHit);
+      usageAvailable = usage.usageAvailable;
       if (activeAgent === jeff) {
         console.info(JSON.stringify({
           event: 'jeff_response_completed',
@@ -162,6 +182,9 @@ app.post('/chat', async (req, res) => {
     }
     writeEvent(res, { type: 'error', message });
   } finally {
+    if (!usageAvailable) {
+      console.warn(JSON.stringify({ event: 'agent_response_usage_missing', model: activeModel, mode }));
+    }
     res.end();
   }
 });

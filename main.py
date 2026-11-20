@@ -12,6 +12,7 @@ from dotenv import load_dotenv
 from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, StreamingResponse
+from fastapi.staticfiles import StaticFiles
 from openpyxl import Workbook
 from pydantic import BaseModel, Field
 from reportlab.lib import colors
@@ -29,7 +30,7 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 load_dotenv(os.path.join(BASE_DIR, ".env"))
 load_dotenv(os.path.join(os.path.dirname(BASE_DIR), ".env"), override=False)
 
-VALID_MODES = {"investor", "business_model", "customer", "campaign_builder", "financial"}
+VALID_MODES = {"general", "investor", "business_model", "customer", "campaign_builder", "financial"}
 TOKEN_LIMIT = int(os.getenv("PRO_TOKEN_LIMIT", "150000"))
 TOKEN_WINDOW_SECONDS = 24 * 60 * 60
 SESSION_TTL_SECONDS = 2 * 60 * 60  # 2-hour session expiry
@@ -63,6 +64,12 @@ app.add_middleware(
         "X-Tokens-Reset",
         "Retry-After",
     ],
+)
+
+app.mount(
+    "/ui-assets",
+    StaticFiles(directory=os.path.join(BASE_DIR, "assets", "jeff-ui")),
+    name="jeff-ui-assets",
 )
 
 node_process: subprocess.Popen | None = None
@@ -285,8 +292,17 @@ async def quota_state(db: AsyncSession, key: str) -> dict[str, int]:
     return {"used": used, "remaining": remaining, "reset_at": reset_at}
 
 
-async def record_token_usage(db: AsyncSession, key: str, input_tokens: int, output_tokens: int) -> None:
-    total = max(0, int(input_tokens or 0)) + max(0, int(output_tokens or 0))
+async def record_token_usage(
+    db: AsyncSession,
+    key: str,
+    input_tokens: int,
+    output_tokens: int,
+    total_tokens: int = 0,
+) -> None:
+    total = max(
+        max(0, int(input_tokens or 0)) + max(0, int(output_tokens or 0)),
+        max(0, int(total_tokens or 0)),
+    )
     if total <= 0:
         return
     db.add(TokenUsage(user_id=key, tokens=total, created_at=utc_now()))
@@ -581,6 +597,7 @@ async def chat(request: ChatRequest, current_user: CurrentUser = Depends(get_cur
         full_response = ""
         input_tokens = 0
         output_tokens = 0
+        total_tokens = 0
         try:
             async with httpx.AsyncClient(timeout=None) as client:
                 async with client.stream("POST", f"{SIDECAR_URL}/chat", json=payload) as sidecar_response:
@@ -606,17 +623,18 @@ async def chat(request: ChatRequest, current_user: CurrentUser = Depends(get_cur
                             usage = event.get("usage") or {}
                             input_tokens = int(usage.get("inputTokens") or usage.get("input_tokens") or 0)
                             output_tokens = int(usage.get("outputTokens") or usage.get("output_tokens") or 0)
+                            total_tokens = int(usage.get("totalTokens") or usage.get("total_tokens") or 0)
                         elif event_type == "error":
                             yield event.get("message", "Jeff hit an internal error.")
 
             if full_response:
                 async with AsyncSessionLocal() as db:
                     await record_chat_messages(db, quota_key, request.mode, request.message, full_response)
-                    await record_token_usage(db, quota_key, input_tokens, output_tokens)
+                    await record_token_usage(db, quota_key, input_tokens, output_tokens, total_tokens)
                     await db.commit()
             else:
                 async with AsyncSessionLocal() as db:
-                    await record_token_usage(db, quota_key, input_tokens, output_tokens)
+                    await record_token_usage(db, quota_key, input_tokens, output_tokens, total_tokens)
                     await db.commit()
         except Exception as exc:
             yield f"Stream failed: {exc}"

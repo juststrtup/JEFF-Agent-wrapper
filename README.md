@@ -231,12 +231,13 @@ Check the applied schema revision in the configured test database:
 - **Campaign Builder**: Added cross-mode context retrieval, uploaded input overrides, Campaign Registration JSON validation, and downloadable JSON export.
 - **Frontend History Restoration**: Added history hydration during Jeff UI initialization, restoring persisted user and assistant messages from PostgreSQL after browser refreshes. Expired JWTs are refreshed and the history request retried when necessary, while new sessions continue to display the mode-specific welcome message.
 - **Startup Insight Foundation**: Added per-user slot state and per-user/per-mode history models, Alembic migration `0002_understanding_state`, and the fixed weighted percentage helpers.
+- **Project 3 Development UI and Offline Scoring**: Ported the new chat prototype into the development `jeff-ui.html`, extracted its avatar and scene assets, and added the General backend mode. Ran the 20 November synthetic conversation set through GPT-6 Luna offline to review cumulative startup-understanding and vision scores. The production scorer remains separate work.
 
 ### What's Pending & Known Limitations
 - **Multi-instance scaling**: Future support for distributed caching (e.g. Redis) if horizontal scaling is required.
 - **Concurrent quota synchronization**: Future support for transactional locking or equivalent concurrency control to ensure accurate quota enforcement under high concurrent load.
 - **System Prompts**: Jeff and Informer system prompts are supplied through environment variables (JEFF_SYSTEM_PROMPT, INFORMER_SYSTEM_PROMPT) and managed outside this repository.
-- **Jeff Pro UI and Startup Scoring**: The prototype has not yet been ported to the shortcode frontend. Live Luna scoring, the planned `/usage` and `/understanding` endpoints, and cached-token telemetry are pending. Jeff’s 1,500-token cap and cap-hit logging are implemented in the sidecar.
+- **Jeff Pro UI and Startup Scoring**: The development UI is ported in this repository; the active WordPress shortcode asset has not been switched. Live asynchronous Luna scoring, the planned `/usage` and `/understanding` endpoints, and cached-token telemetry are pending. Jeff’s 1,500-token cap and cap-hit logging are implemented in the sidecar.
 
 ### Known-Broken
 - None in the existing deployed API. The planned endpoints above are not available yet.
@@ -250,3 +251,4 @@ Check the applied schema revision in the configured test database:
 - **Session Persistence & History Restoration**: Verified that browser refreshes restore persisted conversation history while maintaining isolated histories for each interaction mode. Also verified that previously persisted conversations remain retrievable after logout/login.
 - **Campaign Builder**: Verified cross-mode context retrieval, uploaded input overrides, Campaign Registration JSON validation, and downloadable `.json` export through the `/export/campaign` endpoint.
 - **Startup Insight Foundation**: The focused weighted-formula tests passed. Alembic applied `0002_understanding_state` to the configured test database and reported it as the current revision. A local health check with the configured sidecar returned `sidecar: ok` on port 8011 because port 8010 was occupied.
+- **Project 3 Development UI and Offline Scoring**: Exercised 20 synthetic founder chat turns across all six modes on ports 8013–8020 and confirmed the chat histories were persisted. GPT-6 Luna scored five cumulative founder-only snapshots for each of four profiles; the weighted percentages use the existing formula helpers. The prompts, replies, per-turn scores, and review are archived in [`testing/archives/nov-20/20-conversations.json`](testing/archives/nov-20/20-conversations.json) and [`testing/archives/nov-20/score-trend-review.md`](testing/archives/nov-20/score-trend-review.md). This offline review does not verify live scorer scheduling, contradiction handling, or repeat-scoring stability.

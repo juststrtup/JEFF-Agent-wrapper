@@ -146,6 +146,7 @@ export const jeff = new Agent({
   modelSettings: {
     reasoning: { effort: jeffReasoningEffort },
     maxTokens: JEFF_MAX_OUTPUT_TOKENS,
+    preserveRawUsage: true,
     store: true
   }
 });
@@ -159,6 +160,7 @@ export const informer = new Agent({
     temperature: 1,
     topP: 1,
     maxTokens: 2048,
+    preserveRawUsage: true,
     store: true
   }
 });
