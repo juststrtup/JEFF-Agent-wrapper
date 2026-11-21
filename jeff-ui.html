@@ -1,1517 +1,546 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Jeff — Your AI Co-Founder | JustStartUP</title>
-    <meta name="description" content="Jeff AI Agent — multi-mode startup co-founder chat interface by JustStartUP">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link
-        href="https://fonts.googleapis.com/css2?family=Rosario:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap"
-        rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/mammoth/mammoth.browser.min.js"></script>
-    <style>
-        /* ── Reset & Base ────────────────────────────────────────── */
-        *,
-        *::before,
-        *::after {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        :root {
-            --bg: #0a0a0a;
-            --surface: #111111;
-            --surface-alt: #1a1a1a;
-            --accent: #7c3aed;
-            --accent-hover: #6d28d9;
-            --text-primary: #e5e5e5;
-            --text-muted: #888888;
-            --border: rgba(255, 255, 255, 0.08);
-            --radius-card: 12px;
-            --radius-pill: 999px;
-        }
-
-        body {
-            font-family: 'Rosario', sans-serif;
-            background: var(--bg);
-            color: var(--text-primary);
-            height: 100vh;
-            overflow: hidden;
-            display: flex;
-            flex-direction: column;
-        }
-
-        /* ── Close Button ─────────────────────────────────────────── */
-        .close-btn {
-            width: 36px;
-            height: 36px;
-            border-radius: 8px;
-            border: 1px solid var(--border);
-            background: transparent;
-            color: var(--text-muted);
-            font-size: 18px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: all 0.2s ease;
-            flex-shrink: 0;
-            margin-left: 8px;
-        }
-
-        .close-btn:hover {
-            background: rgba(255, 0, 0, 0.15);
-            color: #ff4444;
-            border-color: rgba(255, 0, 0, 0.3);
-        }
-
-        /* ── Close Overlay ────────────────────────────────────────── */
-        .close-overlay {
-            position: fixed;
-            inset: 0;
-            background: rgba(0, 0, 0, 0.9);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            z-index: 100;
-            gap: 16px;
-            opacity: 0;
-            pointer-events: none;
-            transition: opacity 0.3s ease;
-        }
-
-        .close-overlay.visible {
-            opacity: 1;
-            pointer-events: auto;
-        }
-
-        .close-overlay h2 {
-            font-size: 24px;
-            color: var(--text-primary);
-        }
-
-        .close-overlay p {
-            color: var(--text-muted);
-            font-size: 14px;
-        }
-
-        .close-overlay button {
-            padding: 10px 24px;
-            border-radius: var(--radius-pill);
-            border: none;
-            background: var(--accent);
-            color: #fff;
-            font-family: 'Rosario', sans-serif;
-            font-size: 14px;
-            cursor: pointer;
-            margin-top: 8px;
-            transition: background 0.2s ease;
-        }
-
-        .close-overlay button:hover {
-            background: var(--accent-hover);
-        }
-
-        /* ── Header ──────────────────────────────────────────────── */
-        .header {
-            display: flex;
-            align-items: center;
-            gap: 16px;
-            padding: 16px 24px;
-            border-bottom: 1px solid var(--border);
-            background: var(--bg);
-            flex-shrink: 0;
-            z-index: 10;
-        }
-
-        .header-brand {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            flex-shrink: 0;
-        }
-
-        .header-brand .logo {
-            width: 32px;
-            height: 32px;
-            background: var(--accent);
-            border-radius: 8px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 16px;
-            font-weight: 700;
-            color: #fff;
-        }
-
-        .header-brand h1 {
-            font-size: 18px;
-            font-weight: 700;
-            color: var(--text-primary);
-        }
-
-        .header-brand .subtitle {
-            font-size: 12px;
-            color: var(--text-muted);
-            margin-left: 2px;
-        }
-
-        .quota-status {
-            font-size: 12px;
-            color: var(--text-muted);
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            padding: 7px 10px;
-            background: var(--surface);
-            white-space: nowrap;
-        }
-
-        .mode-nav {
-            display: flex;
-            gap: 8px;
-            overflow-x: auto;
-            white-space: nowrap;
-            scrollbar-width: none;
-            -ms-overflow-style: none;
-            padding: 4px 0;
-            margin-left: auto;
-        }
-
-        .mode-nav::-webkit-scrollbar {
-            display: none;
-        }
-
-        .mode-btn {
-            padding: 8px 18px;
-            border-radius: var(--radius-pill);
-            border: 1px solid var(--border);
-            background: var(--surface-alt);
-            color: var(--text-muted);
-            font-family: 'Rosario', sans-serif;
-            font-size: 13px;
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            flex-shrink: 0;
-        }
-
-        .mode-btn:hover {
-            background: #222;
-            color: var(--text-primary);
-            border-color: rgba(255, 255, 255, 0.15);
-        }
-
-        .mode-btn.active {
-            background: var(--accent);
-            color: #ffffff;
-            border-color: var(--accent);
-        }
-
-        .mode-btn.active:hover {
-            background: var(--accent-hover);
-        }
-
-        /* ── Chat Area ───────────────────────────────────────────── */
-        .chat-area {
-            flex: 1;
-            overflow-y: auto;
-            padding: 24px;
-            display: flex;
-            flex-direction: column;
-            gap: 16px;
-            scroll-behavior: smooth;
-            transition: opacity 0.2s ease;
-        }
-
-        .chat-area.fade-out {
-            opacity: 0;
-        }
-
-        .chat-area::-webkit-scrollbar {
-            width: 6px;
-        }
-
-        .chat-area::-webkit-scrollbar-track {
-            background: transparent;
-        }
-
-        .chat-area::-webkit-scrollbar-thumb {
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 3px;
-        }
-
-        /* ── Message Bubbles ─────────────────────────────────────── */
-        .message {
-            display: flex;
-            flex-direction: column;
-            max-width: 680px;
-            animation: fadeIn 0.3s ease;
-        }
-
-        @keyframes fadeIn {
-            from {
-                opacity: 0;
-                transform: translateY(8px);
-            }
-
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        .message.jeff {
-            align-self: flex-start;
-        }
-
-        .message.user {
-            align-self: flex-end;
-        }
-
-        .message-label {
-            font-size: 12px;
-            font-weight: 600;
-            margin-bottom: 6px;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
-
-        .message.jeff .message-label {
-            color: var(--accent);
-        }
-
-        .message.user .message-label {
-            color: var(--text-muted);
-            justify-content: flex-end;
-        }
-
-        .message-bubble {
-            padding: 14px 18px;
-            border-radius: var(--radius-card);
-            font-size: 14px;
-            line-height: 1.65;
-            word-wrap: break-word;
-        }
-
-        .message.jeff .message-bubble {
-            background: var(--surface);
-            border: 1px solid var(--border);
-            border-left: 3px solid var(--accent);
-            color: var(--text-primary);
-        }
-
-        .message.user .message-bubble {
-            background: var(--accent);
-            color: #ffffff;
-            border: none;
-        }
-
-        /* ── Rendered Markdown inside Jeff's bubbles ─────────────── */
-        .message-bubble h1,
-        .message-bubble h2,
-        .message-bubble h3,
-        .message-bubble h4 {
-            color: var(--text-primary);
-            margin: 12px 0 6px 0;
-            line-height: 1.3;
-        }
-
-        .message-bubble h1 {
-            font-size: 18px;
-        }
-
-        .message-bubble h2 {
-            font-size: 16px;
-        }
-
-        .message-bubble h3 {
-            font-size: 15px;
-        }
-
-        .message-bubble h4 {
-            font-size: 14px;
-        }
-
-        .message-bubble h1:first-child,
-        .message-bubble h2:first-child,
-        .message-bubble h3:first-child {
-            margin-top: 0;
-        }
-
-        .message-bubble p {
-            margin: 8px 0;
-        }
-
-        .message-bubble p:first-child {
-            margin-top: 0;
-        }
-
-        .message-bubble p:last-child {
-            margin-bottom: 0;
-        }
-
-        .message-bubble strong {
-            color: #ffffff;
-            font-weight: 600;
-        }
-
-        .message-bubble em {
-            color: var(--text-muted);
-            font-style: italic;
-        }
-
-        .message-bubble ul,
-        .message-bubble ol {
-            margin: 8px 0;
-            padding-left: 20px;
-        }
-
-        .message-bubble li {
-            margin: 4px 0;
-        }
-
-        .message-bubble code {
-            background: rgba(124, 58, 237, 0.15);
-            color: #c4b5fd;
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-family: 'Courier New', monospace;
-            font-size: 13px;
-        }
-
-        .message-bubble pre {
-            background: #0d0d0d;
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            padding: 12px;
-            margin: 10px 0;
-            overflow-x: auto;
-        }
-
-        .message-bubble pre code {
-            background: none;
-            padding: 0;
-            color: #c4b5fd;
-            font-size: 13px;
-        }
-
-        .message-bubble hr {
-            border: none;
-            border-top: 1px solid var(--border);
-            margin: 12px 0;
-        }
-
-        .message-bubble table {
-            width: 100%;
-            border-collapse: collapse;
-            margin: 10px 0;
-            font-size: 13px;
-        }
-
-        .message-bubble th,
-        .message-bubble td {
-            border: 1px solid var(--border);
-            padding: 6px 10px;
-            text-align: left;
-        }
-
-        .message-bubble th {
-            background: rgba(124, 58, 237, 0.1);
-            font-weight: 600;
-        }
-
-        .message-bubble blockquote {
-            border-left: 3px solid var(--accent);
-            margin: 8px 0;
-            padding: 4px 12px;
-            color: var(--text-muted);
-        }
-
-        .message-bubble a {
-            color: #a78bfa;
-            text-decoration: underline;
-        }
-
-        .message-actions {
-            display: flex;
-            gap: 8px;
-            margin-top: 8px;
-        }
-
-        .export-btn {
-            border: 1px solid var(--border);
-            background: var(--surface-alt);
-            color: var(--text-muted);
-            border-radius: 8px;
-            padding: 6px 10px;
-            font-family: 'Rosario', sans-serif;
-            font-size: 12px;
-            cursor: pointer;
-            transition: all 0.2s ease;
-        }
-
-        .export-btn:hover {
-            color: var(--text-primary);
-            border-color: rgba(255, 255, 255, 0.2);
-            background: #222;
-        }
-
-        .campaign-upload-btn {
-            border: 1px solid var(--border);
-            background: var(--surface-alt);
-            color: var(--text-primary);
-            border-radius: 8px;
-            padding: 0 14px;
-            height: 48px;
-            font-family: 'Rosario', sans-serif;
-            font-size: 13px;
-            cursor: pointer;
-            flex-shrink: 0;
-        }
-
-        .campaign-upload-btn[hidden] {
-            display: none;
-        }
-
-        .modal-overlay {
-            position: fixed;
-            inset: 0;
-            background: rgba(0, 0, 0, 0.72);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-            z-index: 80;
-        }
-
-        .modal-overlay[hidden] {
-            display: none;
-        }
-
-        .upload-modal {
-            width: min(640px, 100%);
-            max-height: min(760px, 90vh);
-            overflow-y: auto;
-            background: var(--surface);
-            border: 1px solid var(--border);
-            border-radius: var(--radius-card);
-            padding: 20px;
-        }
-
-        .upload-modal h2 {
-            font-size: 18px;
-            margin-bottom: 14px;
-        }
-
-        .upload-field {
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-            margin-bottom: 12px;
-        }
-
-        .upload-field label {
-            font-size: 12px;
-            color: var(--text-muted);
-        }
-
-        .upload-field textarea,
-        .upload-field input {
-            width: 100%;
-            border: 1px solid var(--border);
-            background: var(--bg);
-            color: var(--text-primary);
-            border-radius: 8px;
-            padding: 10px;
-            font-family: 'Rosario', sans-serif;
-            font-size: 14px;
-        }
-
-        .upload-field textarea {
-            min-height: 72px;
-            resize: vertical;
-        }
-
-        .modal-actions {
-            display: flex;
-            justify-content: flex-end;
-            gap: 10px;
-            margin-top: 14px;
-        }
-
-        .modal-actions button {
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            padding: 8px 14px;
-            background: var(--surface-alt);
-            color: var(--text-primary);
-            font-family: 'Rosario', sans-serif;
-            cursor: pointer;
-        }
-
-        .modal-actions .primary {
-            background: var(--accent);
-            border-color: var(--accent);
-            color: #fff;
-        }
-
-        .upload-status {
-            color: var(--text-muted);
-            font-size: 12px;
-            min-height: 16px;
-        }
-
-        /* ── Typing Indicator ────────────────────────────────────── */
-        .typing-indicator {
-            display: flex;
-            align-items: center;
-            gap: 5px;
-            padding: 14px 18px;
-            background: var(--surface);
-            border: 1px solid var(--border);
-            border-left: 3px solid var(--accent);
-            border-radius: var(--radius-card);
-            max-width: 80px;
-        }
-
-        .typing-dot {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            background: var(--text-muted);
-            animation: typingPulse 1.4s infinite ease-in-out;
-        }
-
-        .typing-dot:nth-child(2) {
-            animation-delay: 0.2s;
-        }
-
-        .typing-dot:nth-child(3) {
-            animation-delay: 0.4s;
-        }
-
-        @keyframes typingPulse {
-
-            0%,
-            60%,
-            100% {
-                transform: scale(0.6);
-                opacity: 0.4;
-            }
-
-            30% {
-                transform: scale(1);
-                opacity: 1;
-            }
-        }
-
-        /* ── Input Bar ───────────────────────────────────────────── */
-        .input-bar {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            padding: 16px 24px;
-            border-top: 1px solid var(--border);
-            background: var(--bg);
-            flex-shrink: 0;
-        }
-
-        .input-field {
-            flex: 1;
-            padding: 14px 18px;
-            border-radius: var(--radius-card);
-            border: 1px solid var(--border);
-            background: var(--surface);
-            color: var(--text-primary);
-            font-family: 'Space Grotesk', sans-serif;
-            font-size: 14px;
-            outline: none;
-            transition: border-color 0.2s ease, box-shadow 0.2s ease;
-        }
-
-        .input-field::placeholder {
-            color: var(--text-muted);
-        }
-
-        .input-field:focus {
-            border-color: var(--accent);
-            box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.15);
-        }
-
-        .input-field:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-
-        .send-btn {
-            width: 48px;
-            height: 48px;
-            border-radius: var(--radius-card);
-            border: none;
-            background: var(--accent);
-            color: #ffffff;
-            font-size: 20px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: all 0.2s ease;
-            flex-shrink: 0;
-        }
-
-        .send-btn:hover {
-            background: var(--accent-hover);
-            transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(124, 58, 237, 0.3);
-        }
-
-        .send-btn:active {
-            transform: translateY(0);
-        }
-
-        .send-btn:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-            transform: none;
-            box-shadow: none;
-        }
-
-        /* ── Responsive ──────────────────────────────────────────── */
-        @media (max-width: 640px) {
-            .header {
-                flex-direction: column;
-                align-items: flex-start;
-                gap: 12px;
-                padding: 12px 16px;
-            }
-
-            .mode-nav {
-                margin-left: 0;
-                width: 100%;
-            }
-
-            .chat-area {
-                padding: 16px;
-            }
-
-            .input-bar {
-                padding: 12px 16px;
-                gap: 8px;
-            }
-
-            .message {
-                max-width: 90%;
-            }
-
-            .header-brand .subtitle {
-                display: none;
-            }
-
-            .quota-status {
-                width: 100%;
-            }
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Jeff</title>
+<style>
+  :root{
+    --jeff-base-scene: url("/ui-assets/images/scenes/general-b59940f6e3.webp");
+    --jeff-theme-scene: none;
+    --panel:#000;
+    --line:#1a0505;
+    --line-hot:#3d0a0a;
+    --red:#ff2233;
+    --red-dim:#8c1620;
+    --txt:#ffffff;
+    --txt-dim:#9a9a9a;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;height:100%;}
+  body{
+    font-family:'SF Mono',ui-monospace,Menlo,monospace;
+    color:var(--txt); display:flex; justify-content:center;
+    overflow:hidden; position:relative; background:#05070c;
+  }
+  .aurora{
+    position:absolute; left:-14%; top:-14%; width:128%; height:128%;
+    z-index:0; pointer-events:none;
+    background-image:var(--jeff-base-scene, none);
+    background-size:cover; background-position:center;
+    background-repeat:no-repeat;
+    animation:drift 40s ease-in-out infinite alternate;
+    transition:opacity 1.4s ease;
+  }
+  @keyframes drift{
+    0%{transform:translate3d(0,0,0) scale(1) rotate(0deg);}
+    50%{transform:translate3d(-3%,2%,0) scale(1.08) rotate(4deg);}
+    100%{transform:translate3d(3%,-2%,0) scale(1.04) rotate(-3deg);}
+  }
+  .flow, .gloss{
+    position:absolute; left:-16%; top:-16%; width:132%; height:132%;
+    z-index:0; pointer-events:none;
+    background-image:var(--jeff-base-scene, none);
+    background-size:cover; background-position:center;
+    background-repeat:no-repeat;
+    transition:opacity 1.4s ease;
+  }
+  .aurora-r, .flow-r, .gloss-r, .aurora-c, .flow-c, .gloss-c, .aurora-b, .flow-b, .gloss-b, .aurora-k, .flow-k, .gloss-k, .aurora-f, .flow-f, .gloss-f{
+    position:absolute; z-index:0; pointer-events:none;
+    background-size:cover; background-position:center; background-repeat:no-repeat;
+    opacity:0; transition:opacity 1.4s ease;
+  }
+  .aurora-r, .flow-r, .gloss-r{background-image:var(--jeff-theme-scene, none);}
+  .aurora-c, .flow-c, .gloss-c{background-image:var(--jeff-theme-scene, none);}
+  .aurora-b, .flow-b, .gloss-b{background-image:var(--jeff-theme-scene, none);}
+  .aurora-k, .flow-k, .gloss-k{background-image:var(--jeff-theme-scene, none);}
+  .aurora-f, .flow-f, .gloss-f{background-image:var(--jeff-theme-scene, none);}
+  .aurora-r, .aurora-c, .aurora-b, .aurora-k, .aurora-f{
+    left:-14%; top:-14%; width:128%; height:128%;
+    animation:drift 40s ease-in-out infinite alternate;
+  }
+  .flow-r, .flow-c, .flow-b, .flow-k, .flow-f{
+    left:-16%; top:-16%; width:132%; height:132%;
+    mix-blend-mode:soft-light;
+    animation:driftB 54s ease-in-out infinite alternate;
+  }
+  .gloss-r, .gloss-c, .gloss-b, .gloss-k, .gloss-f{
+    left:-16%; top:-16%; width:132%; height:132%;
+    mix-blend-mode:screen; filter:blur(14px); transform:scaleX(-1);
+    animation:driftC 76s ease-in-out infinite alternate;
+  }
+  .app.investor .aurora, .app.investor .flow, .app.investor .gloss,
+  .app.customer .aurora, .app.customer .flow, .app.customer .gloss,
+  .app.business .aurora, .app.business .flow, .app.business .gloss,
+  .app.campaign .aurora, .app.campaign .flow, .app.campaign .gloss,
+  .app.financial .aurora, .app.financial .flow, .app.financial .gloss{opacity:0;}
+  .app.investor .aurora-r{opacity:1;}
+  .app.investor .flow-r{opacity:.6;}
+  .app.investor .gloss-r{opacity:.30;}
+  .app.customer .aurora-c{opacity:1;}
+  .app.customer .flow-c{opacity:.55;}
+  .app.customer .gloss-c{opacity:.26;}
+  .app.business .aurora-b{opacity:1;}
+  .app.business .flow-b{opacity:.5;}
+  .app.business .gloss-b{opacity:.2;}
+  .app.campaign .aurora-k{opacity:1;}
+  .app.campaign .flow-k{opacity:.5;}
+  .app.campaign .gloss-k{opacity:.2;}
+  .app.financial .aurora-f{opacity:1;}
+  .app.financial .flow-f{opacity:.5;}
+  .app.financial .gloss-f{opacity:.22;}
+  .app.business{border-color:rgba(198,150,32,.6);}
+  .app.business .stat .fill{background:linear-gradient(90deg,#7a5a0c,#e0b23c);
+    box-shadow:0 0 8px rgba(224,178,60,.5);}
+  .app.business .stat.vision .fill{background:linear-gradient(90deg,#6b4e10,#f0d27a);}
+  .app.business .msg.agent .body{border-left-color:#e0b23c;}
+  .app.business .msg .tag{color:#6b5210; text-shadow:0 1px 5px rgba(255,255,255,.6);}
+  .app.business .msg.user .tag{color:#4d4d4d;}
+  .app.business .sys{color:#6b5210; background:rgba(255,255,255,.75);}
+  .app.business .statsHead .chev, .app.business .stat.open .chev{color:#c69620;}
+  .app.business .send{border-color:#c69620; color:#6b5210;}
+  .app.business .send:hover{background:rgba(224,178,60,.18); box-shadow:0 0 12px rgba(224,178,60,.3);}
+  .app.business .dot{background:#e0b23c; box-shadow:0 0 6px #e0b23c;}
+
+  .app.campaign{border-color:rgba(240,130,40,.6);}
+  .app.campaign .stat .fill{background:linear-gradient(90deg,#8c3d06,#ff8c3a);
+    box-shadow:0 0 8px rgba(255,140,58,.5);}
+  .app.campaign .stat.vision .fill{background:linear-gradient(90deg,#8a5210,#ffc078);}
+  .app.campaign .msg.agent .body{border-left-color:#ff8c3a;}
+  .app.campaign .msg .tag{color:#8c3d06; text-shadow:0 1px 5px rgba(255,255,255,.6);}
+  .app.campaign .msg.user .tag{color:#4d4d4d;}
+  .app.campaign .sys{color:#8c3d06; background:rgba(255,255,255,.75);}
+  .app.campaign .statsHead .chev, .app.campaign .stat.open .chev{color:#f07a1e;}
+  .app.campaign .send{border-color:#f07a1e; color:#8c3d06;}
+  .app.campaign .send:hover{background:rgba(255,140,58,.18); box-shadow:0 0 12px rgba(255,140,58,.3);}
+  .app.campaign .dot{background:#ff8c3a; box-shadow:0 0 6px #ff8c3a;}
+
+  .app.financial{border-color:rgba(150,220,60,.6);}
+  .app.financial .stat .fill{background:linear-gradient(90deg,#1c6b33,#a8e33a);
+    box-shadow:0 0 8px rgba(168,227,58,.5);}
+  .app.financial .stat.vision .fill{background:linear-gradient(90deg,#14572c,#d6f26a);}
+  .app.financial .msg.agent .body{border-left-color:#a8e33a;}
+  .app.financial .msg .tag{color:#12421f; text-shadow:0 1px 5px rgba(255,255,255,.5);}
+  .app.financial .msg.user .tag{color:#16341c;}
+  .app.financial .sys{color:#12421f; background:rgba(255,255,255,.75);}
+  .app.financial .statsHead .chev, .app.financial .stat.open .chev{color:#a8e33a;}
+  .app.financial .send{border-color:#a8e33a; color:#12421f;}
+  .app.financial .send:hover{background:rgba(168,227,58,.2); box-shadow:0 0 12px rgba(168,227,58,.3);}
+  .app.financial .dot{background:#a8e33a; box-shadow:0 0 6px #a8e33a;}
+  .app.investor{border-color:rgba(255,34,51,.7);}
+  .app.customer{border-color:rgba(90,220,190,.55);}
+  .app.customer .stat .fill{background:linear-gradient(90deg,#0f6b58,#39e0b0);
+    box-shadow:0 0 8px rgba(57,224,176,.5);}
+  .app.customer .stat.vision .fill{background:linear-gradient(90deg,#0d5f74,#4fd6ee);}
+  .app.customer .msg.agent .body{border-left-color:#39e0b0;}
+  .app.customer .msg .tag{color:#0b5f4d; text-shadow:0 1px 5px rgba(255,255,255,.55);}
+  .app.customer .msg.user .tag{color:#0b4a5f;}
+  .app.customer .sys{color:#0b5f4d; background:rgba(255,255,255,.72);}
+  .app.customer .send{border-color:#39e0b0; color:#0b5f4d;}
+  .app.customer .send:hover{background:rgba(57,224,176,.18); box-shadow:0 0 12px rgba(57,224,176,.3);}
+  .app.customer .dot{background:#39e0b0; box-shadow:0 0 6px #39e0b0;}
+  .app.customer .statsHead .chev, .app.customer .stat.open .chev{color:#39e0b0;}
+  .flow{
+    mix-blend-mode:soft-light; opacity:.55;
+    animation:driftB 54s ease-in-out infinite alternate;
+  }
+  .gloss{
+    mix-blend-mode:screen; opacity:.16; filter:blur(14px);
+    transform:scaleX(-1);
+    animation:driftC 76s ease-in-out infinite alternate;
+  }
+  .gloss2{display:none;}
+  @keyframes drift{
+    0%{transform:scale(1.02) translate3d(0,0,0);}
+    100%{transform:scale(1.12) translate3d(-3%,-4%,0);}
+  }
+  @keyframes driftB{
+    0%{transform:scale(1.14) rotate(2deg) translate3d(2%,3%,0);}
+    100%{transform:scale(1.02) rotate(-2deg) translate3d(-3%,-2%,0);}
+  }
+  @keyframes driftC{
+    0%{transform:scaleX(-1) scale(1.2) translate3d(-3%,2%,0);}
+    100%{transform:scaleX(-1) scale(1.05) translate3d(3%,-4%,0);}
+  }
+  .app{
+    position:relative; z-index:1; overflow:hidden;
+    width:100%; max-width:520px; height:100dvh;
+    display:flex; flex-direction:column;
+    background:#0a0d14;
+    border-left:1px solid rgba(255,34,51,.35);
+    border-right:1px solid rgba(255,34,51,.35);
+  }
+  .app > header, .app > .modes, .app > .stats, .app > .log, .app > .composer{position:relative; z-index:1;}
+  .veil{
+    position:absolute; inset:0; z-index:0; pointer-events:none;
+    background:radial-gradient(125% 95% at 50% 42%, rgba(0,0,0,.10), rgba(0,0,0,.34));
+  }
+
+  header{
+    display:flex; align-items:center; gap:12px;
+    padding:14px 16px;
+    border-bottom:1px solid var(--line-hot);
+    background:#000;
+    position:relative; flex:0 0 auto;
+  }
+  header::after{
+    content:''; position:absolute; left:0; right:0; bottom:-1px; height:1px;
+    background:linear-gradient(90deg,transparent,var(--red),transparent);
+    opacity:.55;
+  }
+
+  .avatar{
+    position:relative; width:46px; height:46px; flex:0 0 auto;
+    border-radius:50%; border:1px solid var(--line-hot);
+    display:grid; place-items:center; overflow:hidden;
+    background:#000;
+  }
+  .avatar::before{
+    content:''; position:absolute; inset:-2px; border-radius:50%;
+    box-shadow:0 0 14px 1px rgba(255,34,51,.28); pointer-events:none;
+  }
+  .avatar canvas{width:100%;height:100%;display:block;filter:url(#avatarWarp);}
+
+  .who{flex:1 1 auto; min-width:0;}
+  .who h1{
+    margin:0; font-size:13px; font-weight:500; letter-spacing:.14em;
+    text-transform:uppercase; color:var(--txt);
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  }
+  .who p{
+    margin:3px 0 0; font-size:10.5px; letter-spacing:.08em;
+    color:var(--txt-dim); display:flex; align-items:center; gap:6px;
+  }
+  .dot{width:5px;height:5px;border-radius:50%;background:var(--red);
+       box-shadow:0 0 6px var(--red); animation:blink 2.4s ease-in-out infinite;}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:.25}}
+
+  .modes{
+    flex:0 0 auto; display:flex; gap:7px;
+    overflow-x:auto; overflow-y:hidden; -webkit-overflow-scrolling:touch;
+    scrollbar-width:none; background:#000;
+    padding:9px 14px; border-bottom:1px solid var(--line);
+    mask-image:linear-gradient(90deg,transparent 0,#000 12px,#000 calc(100% - 20px),transparent 100%);
+  }
+  .modes::-webkit-scrollbar{display:none;}
+  .tokenchip{
+    flex:0 0 auto; display:flex; align-items:center; gap:7px;
+    padding:7px 12px; border-radius:3px; white-space:nowrap;
+    border:1px solid var(--line-hot); background:rgba(0,0,0,.55);
+    font-family:inherit; font-size:9px; letter-spacing:.09em;
+    color:var(--txt-dim); font-variant-numeric:tabular-nums;
+    cursor:default; user-select:none; margin-left:2px;
+    transition:border-color .3s, color .3s;
+  }
+  .tokenchip .num{color:#fff; font-weight:500;}
+  .tokenchip .bar{
+    width:34px; height:3px; border-radius:2px; background:#1c1c1c; overflow:hidden;
+  }
+  .tokenchip .bar i{
+    display:block; height:100%; width:100%; border-radius:2px;
+    background:linear-gradient(90deg,#7a0f18,#ff2233);
+    transition:width .8s cubic-bezier(.22,.9,.25,1), background .3s;
+  }
+  .tokenchip.warn{border-color:#c8891a; color:#e8b455;}
+  .tokenchip.warn .bar i{background:linear-gradient(90deg,#7a4a08,#ffb02e);}
+  .tokenchip.crit{border-color:#ff2233; color:#ff6d78;}
+  .tokenchip.crit .bar i{background:linear-gradient(90deg,#8c0d16,#ff2233);}
+  .tokenchip.crit .num{color:#ff6d78;}
+  .modebtn{
+    flex:0 0 auto; cursor:pointer; user-select:none;
+    font-family:inherit; font-size:10px; letter-spacing:.12em;
+    text-transform:uppercase; padding:7px 12px; white-space:nowrap; flex:0 0 auto;
+    color:var(--txt-dim); background:transparent;
+    border:1px solid var(--line-hot); border-radius:3px;
+    transition:color .2s, border-color .2s, background .2s, box-shadow .2s;
+  }
+  .modebtn:hover{color:var(--txt); border-color:var(--red-dim);}
+  #btnInvestor.on{
+    color:#fff; border-color:var(--red); background:rgba(255,34,51,.12);
+    box-shadow:0 0 12px rgba(255,34,51,.3), inset 0 0 10px rgba(255,34,51,.07);
+  }
+  #btnCustomer.on{
+    color:#fff; border-color:#39e0b0; background:rgba(57,224,176,.12);
+    box-shadow:0 0 12px rgba(57,224,176,.3), inset 0 0 10px rgba(57,224,176,.07);
+  }
+  #btnOrb.on{
+    color:#fff; border-color:#c9a8ff; background:rgba(201,168,255,.12);
+    box-shadow:0 0 12px rgba(201,168,255,.28), inset 0 0 10px rgba(201,168,255,.07);
+  }
+  #btnBusiness.on{
+    color:#fff; border-color:#e0b23c; background:rgba(224,178,60,.14);
+    box-shadow:0 0 12px rgba(224,178,60,.3), inset 0 0 10px rgba(224,178,60,.07);
+  }
+  #btnFinancial.on{
+    color:#fff; border-color:#a8e33a; background:rgba(168,227,58,.14);
+    box-shadow:0 0 12px rgba(168,227,58,.3), inset 0 0 10px rgba(168,227,58,.07);
+  }
+  #btnCampaign.on{
+    color:#fff; border-color:#ff8c3a; background:rgba(255,140,58,.14);
+    box-shadow:0 0 12px rgba(255,140,58,.3), inset 0 0 10px rgba(255,140,58,.07);
+  }
+  .modebtn:disabled{opacity:.45; cursor:default;}
+
+  .stats{
+    flex:0 0 auto; background:#000; border-bottom:1px solid var(--line);
+  }
+  .statsHead{
+    display:flex; align-items:center; gap:10px; cursor:pointer; user-select:none;
+    padding:11px 16px;
+  }
+  .statsHead .lbl{
+    font-size:9px; letter-spacing:.18em; text-transform:uppercase; color:#fff;
+  }
+  .statsHead .peek{
+    flex:1 1 auto; font-size:10px; letter-spacing:.08em; color:var(--txt-dim);
+    font-variant-numeric:tabular-nums; white-space:nowrap; overflow:hidden;
+    text-overflow:ellipsis; transition:opacity .25s;
+  }
+  .statsHead .chev{
+    font-size:9px; color:var(--red); transition:transform .32s cubic-bezier(.3,.9,.3,1);
+  }
+  .stats.open .statsHead .chev{transform:rotate(180deg);}
+  .stats.open .statsHead .peek{opacity:0;}
+
+  .drawer{
+    max-height:0; overflow:hidden;
+    transition:max-height .42s cubic-bezier(.3,.9,.3,1);
+  }
+  .stats.open > .drawer{max-height:560px;}
+
+  .stat{
+    border-top:1px solid #141414; padding:10px 16px 12px;
+  }
+  .stat .row{
+    display:flex; justify-content:space-between; align-items:baseline; gap:8px;
+    cursor:pointer; user-select:none;
+  }
+  .stat .k{
+    font-size:8.5px; letter-spacing:.14em; text-transform:uppercase;
+    color:var(--txt-dim); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  }
+  .stat .right{display:flex; align-items:baseline; gap:7px; flex:0 0 auto;}
+  .stat .v{font-size:11px; font-weight:500; color:#fff; font-variant-numeric:tabular-nums;}
+  .stat .chev{font-size:8px; color:var(--red-dim); transition:transform .32s cubic-bezier(.3,.9,.3,1);}
+  .stat.open .chev{transform:rotate(180deg); color:var(--red);}
+  .stat .track{
+    margin-top:6px; height:3px; border-radius:2px; background:#1c1c1c; overflow:hidden;
+  }
+  .stat .fill{
+    height:100%; width:0%; border-radius:2px;
+    background:linear-gradient(90deg,#7a0f18,#ff2233);
+    box-shadow:0 0 8px rgba(255,34,51,.55);
+    transition:width 1.1s cubic-bezier(.22,.9,.25,1);
+  }
+  .stat.vision .fill{background:linear-gradient(90deg,#5c0b12,#ff5f6d);}
+  .stat .v.bump{animation:bump .5s ease;}
+  @keyframes bump{0%{transform:translateY(-2px);opacity:.4}100%{transform:none;opacity:1}}
+
+  .graph{max-height:0; overflow:hidden; transition:max-height .42s cubic-bezier(.3,.9,.3,1);}
+  .stat.open .graph{max-height:180px;}
+  .graph .inner{padding:12px 0 2px;}
+  .graph svg{display:block; width:100%; height:66px;}
+  .graph .cap{
+    display:flex; justify-content:space-between; margin-top:6px;
+    font-size:8.5px; letter-spacing:.1em; text-transform:uppercase; color:#5c5656;
+  }
+  .graph .empty{
+    font-size:10px; color:#5c5656; letter-spacing:.08em; padding:14px 0 6px;
+  }
+  .log{
+    flex:1 1 auto; overflow-y:auto; padding:18px 16px 8px;
+    display:flex; flex-direction:column; gap:14px;
+    scrollbar-width:thin; scrollbar-color:var(--line-hot) transparent;
+  }
+  .log::-webkit-scrollbar{width:5px;}
+  .log::-webkit-scrollbar-thumb{background:var(--line-hot);border-radius:3px;}
+
+  .msg{max-width:86%; font-size:13px; line-height:1.65; white-space:pre-wrap;
+       word-wrap:break-word; animation:rise .28s ease-out;}
+  @keyframes rise{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+  .msg .tag{display:block; font-size:9.5px; letter-spacing:.16em;
+            text-transform:uppercase; margin-bottom:5px; color:#ff5f6d;
+            text-shadow:0 1px 6px rgba(0,0,0,.9);}
+  .msg .body{padding:10px 13px; border-radius:3px; background:#000;
+             box-shadow:0 2px 14px rgba(0,0,0,.7);}
+
+  .agent{align-self:flex-start;}
+  .agent .body{border-left:2px solid var(--red); border-top:1px solid var(--line);
+               border-right:1px solid var(--line); border-bottom:1px solid var(--line);}
+  .user{align-self:flex-end; text-align:left;}
+  .user .tag{color:#e9e9e9; text-align:right; text-shadow:0 1px 6px rgba(0,0,0,.9);}
+  .user .body{border:1px solid var(--line-hot); background:#000; color:#fff;}
+
+  .sys{align-self:center; max-width:100%; font-size:10px; letter-spacing:.14em;
+       text-transform:uppercase; color:#ff5566; padding:3px 10px;
+       background:rgba(0,0,0,.6); border-radius:3px;}
+
+  .typing{display:inline-flex; gap:4px; padding:2px 0;}
+  .typing i{width:4px;height:4px;border-radius:50%;background:var(--red-dim);
+            animation:bounce 1.1s infinite;}
+  .typing i:nth-child(2){animation-delay:.15s}
+  .typing i:nth-child(3){animation-delay:.3s}
+  @keyframes bounce{0%,60%,100%{opacity:.25;transform:translateY(0)}30%{opacity:1;transform:translateY(-3px)}}
+
+  .composer{
+    flex:0 0 auto; display:flex; align-items:flex-end; gap:9px;
+    padding:12px 14px calc(12px + env(safe-area-inset-bottom));
+    border-top:1px solid var(--line-hot); position:relative;
+    background:rgba(0,0,0,.55); backdrop-filter:blur(14px);
+  }
+  .composer::before{
+    content:''; position:absolute; left:0; right:0; top:-1px; height:1px;
+    background:linear-gradient(90deg,transparent,var(--red),transparent); opacity:.4;
+  }
+  textarea{
+    flex:1 1 auto; resize:none; max-height:110px; min-height:40px;
+    font-family:inherit; font-size:13px; line-height:1.5; color:var(--txt);
+    background:#000; border:1px solid var(--line-hot); border-radius:3px;
+    padding:11px 12px; outline:none; transition:border-color .2s, box-shadow .2s;
+  }
+  textarea::placeholder{color:#6a6a6a;}
+  textarea:focus{border-color:var(--red-dim); box-shadow:0 0 0 1px rgba(255,34,51,.18);}
+  .send{
+    flex:0 0 auto; width:40px; height:40px; cursor:pointer;
+    background:transparent; border:1px solid var(--red-dim); border-radius:3px;
+    color:var(--red); font-size:15px; line-height:1;
+    display:grid; place-items:center; transition:background .18s, box-shadow .18s;
+  }
+  .send:hover{background:rgba(255,34,51,.12); box-shadow:0 0 12px rgba(255,34,51,.25);}
+  .send:active{transform:scale(.95);}
+
+  .close-ui{margin-left:auto;align-self:flex-start;background:transparent;border:1px solid var(--line-hot);color:var(--txt-dim);border-radius:3px;padding:5px 9px;cursor:pointer;font:inherit}
+  .close-ui:hover{color:var(--txt);border-color:var(--red)}
+  .campaign-upload-btn{flex:0 0 auto;background:transparent;border:1px solid var(--line-hot);color:var(--txt-dim);border-radius:3px;padding:8px;cursor:pointer;font:inherit;font-size:11px}
+  .campaign-upload-btn[hidden]{display:none}
+  .message-actions{display:flex;gap:6px;margin:6px 0 0 24px}
+  .export-btn{background:transparent;border:1px solid var(--line-hot);color:var(--txt-dim);border-radius:3px;padding:4px 7px;cursor:pointer;font:inherit;font-size:10px}
+  .export-btn:hover{color:var(--txt);border-color:var(--red-dim)}
+  .modal-overlay{position:fixed;inset:0;z-index:20;background:rgba(0,0,0,.78);display:flex;align-items:center;justify-content:center;padding:16px}
+  .modal-overlay[hidden]{display:none}
+  .upload-modal{width:min(100%,480px);max-height:90dvh;overflow:auto;background:#0a0d14;border:1px solid var(--line-hot);padding:18px;display:grid;gap:12px;color:var(--txt)}
+  .upload-modal h2{font-size:14px;margin:0}
+  .upload-field{display:grid;gap:5px;font-size:11px;color:var(--txt-dim)}
+  .upload-field textarea{width:100%;min-height:56px;resize:vertical}
+  .upload-field input{font:inherit;color:var(--txt-dim)}
+  .upload-status{min-height:16px;color:#ff8c3a;font-size:11px}
+  .modal-actions{display:flex;justify-content:flex-end;gap:8px}
+  .modal-actions button,.close-overlay button{font:inherit;font-size:11px;padding:8px 12px;background:#0a0d14;color:var(--txt);border:1px solid var(--line-hot);cursor:pointer}
+  .modal-actions .primary{border-color:var(--red);color:var(--red)}
+  .close-overlay{position:fixed;inset:0;z-index:30;display:none;align-items:center;justify-content:center;flex-direction:column;gap:12px;background:#05070c;color:var(--txt);text-align:center;padding:24px}
+  .close-overlay.visible{display:flex}
+  .close-overlay h2{font-size:16px;margin:0}
+  .close-overlay p{font-size:12px;color:var(--txt-dim)}
+</style>
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js" defer></script>
 </head>
-
 <body>
 
-    <!-- ── Header ──────────────────────────────────────────────── -->
-    <header class="header" id="header">
-        <div class="header-brand">
-            <div class="logo">◈</div>
-            <div>
-                <h1>Jeff</h1>
-                <span class="subtitle">Your AI Co-Founder</span>
-            </div>
-        </div>
-        <nav class="mode-nav" id="modeNav">
-            <button class="mode-btn active" data-mode="investor" id="mode-investor">Investor</button>
-            <button class="mode-btn" data-mode="business_model" id="mode-business_model">Business Model</button>
-            <button class="mode-btn" data-mode="customer" id="mode-customer">Customer</button>
-            <button class="mode-btn" data-mode="campaign_builder" id="mode-campaign_builder">Campaign Builder</button>
-            <button class="mode-btn" data-mode="financial" id="mode-financial">Financial</button>
-        </nav>
-        <div class="quota-status" id="quotaStatus">Quota loading...</div>
-        <button class="close-btn" id="closeBtn" title="Close (ESC)">✕</button>
-    </header>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+  <filter id="avatarWarp" x="-25%" y="-25%" width="150%" height="150%" color-interpolation-filters="sRGB">
+    <feTurbulence id="turb" type="fractalNoise" baseFrequency="0.02 0.03" numOctaves="2" seed="7" result="n"/>
+    <feDisplacementMap id="disp" in="SourceGraphic" in2="n" scale="3" xChannelSelector="R" yChannelSelector="G"/>
+  </filter>
+</defs></svg>
 
-    <!-- ── Close Overlay ───────────────────────────────────────── -->
-    <div class="close-overlay" id="closeOverlay" aria-hidden="true">
-        <h2>Session Ended</h2>
-        <p>Thanks for chatting with Jeff. Your conversation has been cleared.</p>
-        <button id="reopenBtn">Reopen Jeff</button>
+<div class="app">
+  <div class="aurora"></div>
+  <div class="aurora-r"></div>
+  <div class="aurora-c"></div>
+  <div class="aurora-b"></div>
+  <div class="aurora-k"></div>
+  <div class="aurora-f"></div>
+  <div class="veil"></div>
+  <div class="flow"></div>
+  <div class="flow-r"></div>
+  <div class="flow-c"></div>
+  <div class="flow-b"></div>
+  <div class="flow-k"></div>
+  <div class="flow-f"></div>
+  <div class="gloss"></div>
+  <div class="gloss-r"></div>
+  <div class="gloss-c"></div>
+  <div class="gloss-b"></div>
+  <div class="gloss-k"></div>
+  <div class="gloss-f"></div>
+  <header>
+    <div class="avatar"><canvas id="av" width="132" height="132"></canvas></div>
+    <div class="who">
+      <h1 id="agentName">Nova</h1>
+      <p><span class="dot"></span><span id="agentRole">general assistant</span></p>
     </div>
+    <button class="close-ui" id="closeBtn" type="button" aria-label="Close Jeff">×</button>
+  </header>
 
-    <!-- ── Chat Area ───────────────────────────────────────────── -->
-    <main class="chat-area" id="chatArea"></main>
-
-    <div class="modal-overlay" id="campaignUploadModal" hidden>
-        <div class="upload-modal" role="dialog" aria-modal="true" aria-labelledby="campaignUploadTitle">
-            <h2 id="campaignUploadTitle">Campaign Inputs</h2>
-            <div class="upload-field">
-                <label for="campaignBusinessModel">Business Model</label>
-                <textarea id="campaignBusinessModel"></textarea>
-            </div>
-            <div class="upload-field">
-                <label for="campaignTargetUsers">Target Users</label>
-                <textarea id="campaignTargetUsers"></textarea>
-            </div>
-            <div class="upload-field">
-                <label for="campaignDemographics">Demographics</label>
-                <textarea id="campaignDemographics"></textarea>
-            </div>
-            <div class="upload-field">
-                <label for="campaignFinancialPlan">Financial Plan</label>
-                <textarea id="campaignFinancialPlan"></textarea>
-            </div>
-            <div class="upload-field">
-                <label for="campaignUploadFile">Optional .md, .txt, or .docx</label>
-                <input id="campaignUploadFile" type="file" accept=".md,.txt,.docx">
-            </div>
-            <div class="upload-status" id="campaignUploadStatus"></div>
-            <div class="modal-actions">
-                <button type="button" id="campaignUploadCancel">Cancel</button>
-                <button type="button" class="primary" id="campaignUploadSubmit">Submit</button>
-            </div>
-        </div>
+  <div class="modes" id="modes">
+    <button class="modebtn" id="btnOrb" data-persona="orb" aria-pressed="false">General</button>
+    <button class="modebtn" id="btnInvestor" data-persona="investor">Investor</button>
+    <button class="modebtn" id="btnCustomer" data-persona="customer">Customer</button>
+    <button class="modebtn" id="btnBusiness" data-persona="business">Business Model</button>
+    <button class="modebtn" id="btnCampaign" data-persona="campaign">Campaign Builder</button>
+    <button class="modebtn" id="btnFinancial" data-persona="financial">Financial</button>
+    <div class="tokenchip" id="tokenChip" title="Token budget for this window">
+      <span class="bar"><i id="tokBar"></i></span>
+      <span><span class="num" id="tokLeft">—</span> / <span id="tokLimit">—</span> tokens left</span>
+      <span>&middot; resets <span id="tokReset">--:--</span></span>
     </div>
-
-    <!-- ── Input Bar ───────────────────────────────────────────── -->
-    <footer class="input-bar" id="inputBar">
-        <button class="campaign-upload-btn" id="campaignUploadBtn" type="button" hidden>Upload Inputs</button>
-        <input type="text" class="input-field" id="inputField" placeholder="Ask Jeff anything about your startup..."
-            autocomplete="off">
-        <button class="send-btn" id="sendBtn" title="Send message">→</button>
-    </footer>
-
-    <script>
-        // ── Configuration ────────────────────────────────────────────────────
-        // Auto-detect backend URL. If running locally on port 8080 (python -m http.server),
-        // it falls back to the FastAPI localhost port 8000.
-        // Otherwise, it uses the current domain (e.g., the Render deployment URL).
-        const API_BASE_URL = window.API_BASE_URL || 
-         (window.location.hostname === 'localhost' && window.location.port === '8080'
-        ? 'http://localhost:8000'
-        : window.location.origin);
-        const authToken = window.JEFF_JWT || localStorage.getItem('jeff_jwt') || '';
-        const userId = localStorage.getItem('jeff_user_id') || crypto.randomUUID();
-        localStorage.setItem('jeff_user_id', userId);
-
-        // ── State ────────────────────────────────────────────────────────────
-        let currentMode = 'investor';
-        let isStreaming = false;
-        let campaignInputs = {};
-
-        // Per-mode session IDs — each mode has its own LangChain memory on the server.
-        // Switching modes preserves each mode's conversation independently.
-        const savedModeSessions = JSON.parse(
-            localStorage.getItem("jeff_mode_sessions") || "null"
-        );
-
-        const modeSessions = savedModeSessions || {
-            investor: crypto.randomUUID(),
-            business_model: crypto.randomUUID(),
-            customer: crypto.randomUUID(),
-            campaign_builder: crypto.randomUUID(),
-            financial: crypto.randomUUID()
-        };
-
-        localStorage.setItem(
-            "jeff_mode_sessions",
-            JSON.stringify(modeSessions)
-        );
-
-        // Per-mode chat UI cache — stores the innerHTML of chatArea per mode
-        // so switching back restores the exact conversation visually.
-        const modeChatCache = {
-            investor: null,
-            business_model: null,
-            customer: null,
-            campaign_builder: null,
-            financial: null
-        };
-
-        // Active session_id — points to current mode's session
-        let sessionId = modeSessions[currentMode];
-
-        // ── DOM References ───────────────────────────────────────────────────
-        const chatArea = document.getElementById('chatArea');
-        const inputField = document.getElementById('inputField');
-        const sendBtn = document.getElementById('sendBtn');
-        const modeButtons = document.querySelectorAll('.mode-btn');
-        const closeBtn = document.getElementById('closeBtn');
-        const closeOverlay = document.getElementById('closeOverlay');
-        const reopenBtn = document.getElementById('reopenBtn');
-        const quotaStatus = document.getElementById('quotaStatus');
-        const campaignUploadBtn = document.getElementById('campaignUploadBtn');
-        const campaignUploadModal = document.getElementById('campaignUploadModal');
-        const campaignUploadCancel = document.getElementById('campaignUploadCancel');
-        const campaignUploadSubmit = document.getElementById('campaignUploadSubmit');
-        const campaignUploadStatus = document.getElementById('campaignUploadStatus');
-        const campaignUploadFile = document.getElementById('campaignUploadFile');
-
-        // ── Welcome Messages (per mode) ─────────────────────────────────────
-        const welcomeMessages = {
-            investor: "Hi, I'm Jeff. Let's build your investor story. What stage are you at, and who are you trying to reach?",
-            business_model: "Hi, I'm Jeff. Let's design your business model. Tell me what you're building and who pays for it.",
-            customer: "Hi, I'm Jeff. Let's get inside your customer's head. Who is the person whose life you're trying to make better?",
-            campaign_builder: "Hi, I'm Jeff. Let's turn your startup into a JustStartUp campaign. I'll pull what I can from your other conversations — Business Model, Customer, Financial — and ask you to fill in the rest. Want to upload a refined brief, or shall we walk through it together?",
-            financial: "Hi, I'm Jeff. Let's run the numbers. What's your current MRR, burn rate, or the financial question on your mind?"
-        };
-
-        // ── Mock Responses (local demo copy, not used for production chat) ───
-        function getMockResponse(mode, message) {
-            const responses = {
-                investor: `Great question. When approaching investor meetings, especially at the early stage, you need to lead with the narrative, not the numbers. Investors at pre-seed and seed are buying into you and your vision — traction is a bonus, not a prerequisite. Start by framing the problem as a burning pain point that a specific customer segment experiences daily. Then position your solution as the inevitable fix. If you have any early signals — waitlist sign-ups, LOIs, pilot customers, even strong survey data — weave those in as social proof. Consider whether a SAFE note or a priced round makes more sense for your stage. SAFEs are faster, cheaper, and founder-friendly, but some angels prefer priced rounds for clarity on ownership. One more thing: warm intros convert at 10x the rate of cold outreach. Map your network, find second-degree connections to target investors, and ask for specific, personal introductions. What's your current fundraising target, and have you identified your lead investor profile yet?`,
-
-                business_model: `Let's break this down structurally. The first question I always ask founders is: who pays, how much, and how often? That tells me if you're building a transactional, subscription, or marketplace model — and each has wildly different unit economics. If you're going subscription (SaaS), your north star metrics are MRR, churn rate, and expansion revenue. A healthy SaaS business has net revenue retention above 110%, meaning existing customers grow faster than churning ones. If you're marketplace, you need to solve the chicken-and-egg problem first — which side do you subsidize to bootstrap liquidity? I'd also challenge you to think about your value proposition using the Jobs-to-be-Done framework: what job is your customer hiring your product to do, and what are they currently using as a workaround? That workaround is your real competitor, not the other startups in your space. Consider a land-and-expand strategy — start with a narrow, low-friction entry point, then upsell as you prove value. What's your current pricing model, and have you tested willingness to pay with real customers?`,
-
-                customer: `Let's get specific — "small businesses" is not a customer segment, it's a census category. I need you to describe one real person. Give me their age, role, daily frustrations, and the moment in their day when they feel the pain your product solves. For example: "A 34-year-old SaaS founder who spends 3 hours every Monday manually pulling data from five different tools to build a board report." That's a customer. Now I can work with that. The Jobs-to-be-Done framework helps here — your customer doesn't want your product, they want progress in their life. They're "hiring" your product to make that progress happen. What's the current workaround they use? That workaround tells you their budget (what they already pay, in time or money), their expectations, and your competitive positioning. Next step: run 10 discovery interviews. Don't pitch — just listen. Ask "Tell me about the last time you experienced [problem]" and let them talk. Record the exact words they use — that becomes your marketing copy. Who is the specific person you're building for?`,
-
-                campaign_builder: `A strong startup campaign starts with one clear audience, one urgent pain, and one action you want them to take next. Before choosing channels, define the campaign promise in a single sentence: who it helps, what changes for them, and why now. Then build the campaign around proof points, objections, hooks, and a simple conversion path. For launch planning, I would map this into audience segments, core message, channel mix, content angles, landing-page sections, and follow-up sequence. What's your one-line company description, and what outcome should this campaign drive?`,
-
-                financial: `Let's talk real numbers. The three metrics every early-stage investor will ask about are: burn rate (how much cash you spend monthly), runway (how many months until you're out of cash), and CAC/LTV ratio. A healthy benchmark is LTV:CAC of 3:1 or better — meaning for every dollar you spend acquiring a customer, you earn at least three dollars over their lifetime. Here's the formula: LTV = ARPU × Gross Margin × Average Customer Lifespan. CAC = Total Sales & Marketing Spend / New Customers Acquired. If your LTV:CAC is below 3:1, you either need to reduce acquisition costs (organic channels, referrals, content marketing) or increase customer value (upsells, reduced churn, price optimization). For runway, the golden rule is: raise enough to last 18 months. That gives you 12 months to hit milestones and 6 months to fundraise. If your monthly burn is $30K, you need $540K minimum. What's your current monthly burn rate, and what are your primary cost drivers — engineering, marketing, or operations?`
-            };
-
-            return responses[mode] || responses['investor'];
-        }
-
-        // ── Message Rendering ───────────────────────────────────────────────
-
-        function addJeffMessage(text, allowExport = false) {
-            const msg = document.createElement('div');
-            msg.className = 'message jeff';
-            msg.innerHTML = `
-                <div class="message-label">◈ Jeff</div>
-                <div class="message-bubble">${renderMarkdown(text)}</div>
-            `;
-            chatArea.appendChild(msg);
-            if (allowExport) attachExportActions(msg, text);
-            scrollToBottom();
-            return msg;
-        }
-
-        function addUserMessage(text) {
-            const msg = document.createElement('div');
-            msg.className = 'message user';
-            msg.innerHTML = `
-                <div class="message-label">You</div>
-                <div class="message-bubble">${escapeHTML(text)}</div>
-            `;
-            chatArea.appendChild(msg);
-            scrollToBottom();
-        }
-
-        // ── Conversation History ───────────────────────────────────────────
-
-        function renderHistory(messages, mode) {
-                chatArea.innerHTML = '';
-
-                if (!Array.isArray(messages) || messages.length === 0) {
-                    addJeffMessage(welcomeMessages[mode]);
-                    return;
-                }
-
-                for (const message of messages) {
-                    if (message.role === 'user') {
-                        addUserMessage(message.content);
-                    } else if (message.role === 'assistant') {
-                        addJeffMessage(message.content, true);
-                    }
-                }
-
-                scrollToBottom();
-            }
-
-        function showTypingIndicator() {
-            const msg = document.createElement('div');
-            msg.className = 'message jeff';
-            msg.id = 'typingIndicator';
-            msg.innerHTML = `
-                <div class="message-label">◈ Jeff</div>
-                <div class="typing-indicator">
-                    <div class="typing-dot"></div>
-                    <div class="typing-dot"></div>
-                    <div class="typing-dot"></div>
-                </div>
-            `;
-            chatArea.appendChild(msg);
-            scrollToBottom();
-        }
-
-        function removeTypingIndicator() {
-            const indicator = document.getElementById('typingIndicator');
-            if (indicator) indicator.remove();
-        }
-
-        function scrollToBottom() {
-            chatArea.scrollTop = chatArea.scrollHeight;
-        }
-
-        function escapeHTML(str) {
-            const div = document.createElement('div');
-            div.textContent = str;
-            return div.innerHTML;
-        }
-
-        function updateCampaignControls() {
-            campaignUploadBtn.hidden = currentMode !== 'campaign_builder';
-        }
-
-        function collectCampaignInputs() {
-            const fields = {
-                business_model: document.getElementById('campaignBusinessModel').value.trim(),
-                target_users: document.getElementById('campaignTargetUsers').value.trim(),
-                demographics: document.getElementById('campaignDemographics').value.trim(),
-                financial_plan: document.getElementById('campaignFinancialPlan').value.trim()
-            };
-            return Object.fromEntries(Object.entries(fields).filter(([, value]) => value));
-        }
-
-        async function readCampaignFile(file) {
-            if (!file) return '';
-            const name = file.name.toLowerCase();
-            if (name.endsWith('.txt') || name.endsWith('.md')) {
-                return await file.text();
-            }
-            if (name.endsWith('.docx')) {
-                if (typeof mammoth === 'undefined') {
-                    throw new Error('DOCX reader unavailable. Paste the text or upload .txt/.md.');
-                }
-                const result = await mammoth.extractRawText({ arrayBuffer: await file.arrayBuffer() });
-                return result.value || '';
-            }
-            throw new Error('Upload .md, .txt, or .docx only.');
-        }
-
-        function campaignUploadMessage(inputs, fileName, fileText) {
-            const lines = ['[CAMPAIGN_INPUTS_UPLOAD]'];
-            const labels = {
-                business_model: 'Business Model',
-                target_users: 'Target Users',
-                demographics: 'Demographics',
-                financial_plan: 'Financial Plan'
-            };
-            Object.entries(labels).forEach(([key, label]) => {
-                if (inputs[key]) lines.push(`${label}:\n${inputs[key]}`);
-            });
-            if (fileText) {
-                lines.push(`Uploaded File: ${fileName}`);
-                lines.push(fileText);
-            }
-            return lines.join('\n\n');
-        }
-
-        // ── Markdown Renderer ───────────────────────────────────────────────
-        // Uses marked.js to convert Markdown to formatted HTML.
-        // Called after streaming completes to render the final response.
-
-        function renderMarkdown(text) {
-            if (typeof marked !== 'undefined') {
-                marked.setOptions({ breaks: true, gfm: true });
-                return marked.parse(text);
-            }
-            // Fallback: return escaped HTML if marked.js not loaded
-            return escapeHTML(text);
-        }
-
-        function updateQuotaFromHeaders(headers) {
-            const remaining = headers.get('X-Tokens-Remaining');
-            const limit = headers.get('X-Tokens-Limit');
-            const reset = headers.get('X-Tokens-Reset');
-
-            if (!remaining || !limit) {
-                quotaStatus.textContent = 'Quota unavailable';
-                return;
-            }
-
-            const resetDate = reset ? new Date(Number(reset) * 1000) : null;
-            const resetLabel = resetDate && !Number.isNaN(resetDate.getTime())
-                ? resetDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-                : 'later';
-            quotaStatus.textContent = `${Number(remaining).toLocaleString()} / ${Number(limit).toLocaleString()} tokens left · resets ${resetLabel}`;
-        }
-
-        async function fetchQuota() {
-                try {
-                    const url = authToken
-                        ? `${API_BASE_URL}/quota`
-                        : `${API_BASE_URL}/quota?user_id=${encodeURIComponent(userId)}`;
-
-                    const response = await fetch(url, {
-                        headers: authToken
-                            ? { Authorization: `Bearer ${authToken}` }
-                            : {}
-                    });
-
-                    if (!response.ok) {
-                        quotaStatus.textContent = "Quota unavailable";
-                        return;
-                    }
-
-                    const quota = await response.json();
-
-                    const resetDate = new Date(quota.reset * 1000);
-
-                    quotaStatus.textContent =
-                        `${quota.remaining.toLocaleString()} / ${quota.limit.toLocaleString()} tokens left · resets ${resetDate.toLocaleTimeString([], {
-                            hour: "2-digit",
-                            minute: "2-digit"
-                        })}`;
-                } catch (err) {
-                    quotaStatus.textContent = "Quota unavailable";
-                }
-            }
-
-            async function fetchHistory(mode) {
-                    const historySessionId = modeSessions[mode];
-
-                    if (!historySessionId) {
-                        addJeffMessage(welcomeMessages[mode]);
-                        return;
-                    }
-
-                    let hasRetriedAfterRefresh = false;
-
-                    while (true) {
-                        try {
-                            const response = await fetch(
-                                `${API_BASE_URL}/history/${encodeURIComponent(historySessionId)}`,
-                                {
-                                    method: 'GET',
-                                    headers: authToken
-                                        ? { Authorization: `Bearer ${authToken}` }
-                                        : {}
-                                }
-                            );
-
-                            if (response.status === 401 && !hasRetriedAfterRefresh) {
-                                hasRetriedAfterRefresh = true;
-
-                                console.info('Jeff JWT expired while loading history. Refreshing token...');
-
-                                await refreshAuthToken();
-                                continue;
-                            }
-
-                            if (!response.ok) {
-                                throw new Error(`History fetch failed: HTTP ${response.status}`);
-                            }
-
-                            const data = await response.json();
-
-                            renderHistory(data.messages || [], mode);
-
-                            return;
-                        } catch (error) {
-                            console.warn('Unable to restore Jeff history:', error.message);
-
-                            // Don't leave the user staring at an empty chat.
-                            chatArea.innerHTML = '';
-                            addJeffMessage(welcomeMessages[mode]);
-
-                            return;
-                        }
-                    }
-                }
-
-        function structuredPayloadFromText(text) {
-            const jsonBlock = text.match(/```json\s*([\s\S]*?)```/i);
-            if (jsonBlock) {
-                try { return JSON.parse(jsonBlock[1]); } catch (e) { /* fall through */ }
-            }
-            const campaignJson = campaignJsonFromText(text);
-            if (campaignJson) return campaignJson;
-            return { content: text, mode: currentMode, exported_at: new Date().toISOString() };
-        }
-
-        function campaignJsonFromText(text) {
-            const stripped = text.trim();
-            const fenced = stripped.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/i);
-            const candidate = fenced ? fenced[1].trim() : stripped;
-            const starts = [...candidate].map((char, index) => ({ char, index })).filter(({ char }) => char === '{' || char === '[');
-            for (const { char, index } of starts) {
-                const endChar = char === '{' ? '}' : ']';
-                const end = candidate.lastIndexOf(endChar);
-                if (end <= index) continue;
-                try {
-                    return JSON.parse(candidate.slice(index, end + 1));
-                } catch (e) {
-                    /* try next candidate */
-                }
-            }
-            return null;
-        }
-
-        async function downloadExport(endpoint, extension, text) {
-            const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-                method: 'POST',
-                headers: jsonHeaders(),
-                body: JSON.stringify({
-                    payload: structuredPayloadFromText(text),
-                    content: text,
-                    filename: `jeff-${currentMode}-${Date.now()}`,
-                    title: `Jeff ${currentMode.replaceAll('_', ' ')} export`
-                })
-            });
-
-            if (!response.ok) throw new Error(`Export failed: HTTP ${response.status}`);
-
-            const blob = await response.blob();
-            const url = URL.createObjectURL(blob);
-            const link = document.createElement('a');
-            link.href = url;
-            link.download = `jeff-${currentMode}.${extension}`;
-            document.body.appendChild(link);
-            link.click();
-            link.remove();
-            URL.revokeObjectURL(url);
-        }
-
-        function attachExportActions(msg, text, mode = currentMode) {
-            if (!msg) return;
-            msg.dataset.exportText = text;
-            if (msg.querySelector('.message-actions')) return;
-
-            const campaignJson = mode === 'campaign_builder' ? campaignJsonFromText(text) : null;
-            msg.dataset.campaignJson = campaignJson ? JSON.stringify(campaignJson) : '';
-
-            const actions = document.createElement('div');
-            actions.className = 'message-actions';
-            actions.innerHTML = `
-                <button class="export-btn" type="button" data-export="xlsx">Excel</button>
-                <button class="export-btn" type="button" data-export="pdf">PDF</button>
-                ${campaignJson ? '<button class="export-btn" type="button" data-export="campaign">Download Campaign JSON</button>' : ''}
-            `;
-
-            msg.appendChild(actions);
-        }
-
-        function showBackendError(bubble, message) {
-            bubble.innerHTML = renderMarkdown(`Jeff is unavailable right now.\n\n${message}`);
-        }
-
-        function jsonHeaders() {
-            const headers = { 'Content-Type': 'application/json' };
-            if (authToken) headers.Authorization = `Bearer ${authToken}`;
-            return headers;
-        }
-
-        // ── Backend Streaming (OpenAI Agents via FastAPI) ────────────────────
-
-        async function streamFromBackend(mode, message, bubble, campaignInputsForRequest = null) {
-            const body = {
-                message: message,
-                mode: mode,
-                session_id: sessionId,
-                ...(authToken ? {} : { user_id: userId })
-            };
-            if (mode === 'campaign_builder' && campaignInputsForRequest && Object.keys(campaignInputsForRequest).length) {
-                body.campaign_inputs = campaignInputsForRequest;
-            }
-
-            try {
-                const response = await fetch(`${API_BASE_URL}/chat`, {
-                    method: 'POST',
-                    headers: jsonHeaders(),
-                    body: JSON.stringify(body)
-                });
-
-                updateQuotaFromHeaders(response.headers);
-
-
-                if (!response.ok) {
-                    const retryAfter = response.headers.get('Retry-After');
-                    const detail = await response.text();
-                    throw new Error(retryAfter ? `HTTP ${response.status}. Try again in ${retryAfter} seconds. ${detail}` : `HTTP ${response.status}. ${detail}`);
-                }
-
-                // Capture session_id from server (in case server generated one)
-                const serverSessionId = response.headers.get('X-Session-Id');
-                if (serverSessionId) sessionId = serverSessionId;
-
-                const reader = response.body.getReader();
-                const decoder = new TextDecoder();
-                let fullResponse = '';
-
-                while (true) {
-                    const { done, value } = await reader.read();
-                    if (done) break;
-                    const chunk = decoder.decode(value, { stream: true });
-                    fullResponse += chunk;
-                    bubble.textContent = fullResponse; // Raw text during streaming
-                    scrollToBottom();
-                }
-
-                // Render final Markdown after streaming completes
-                bubble.innerHTML = renderMarkdown(fullResponse);
-                attachExportActions(bubble.closest('.message'), fullResponse, mode);
-
-                // Memory is saved server-side by LangChain — no client tracking needed
-                return true;
-            } catch (err) {
-                console.warn('Backend unavailable:', err.message);
-                showBackendError(bubble, err.message);
-                return false;
-            }
-        }
-
-        // ── Mock Streaming (fallback) ───────────────────────────────────────
-
-        function streamMockResponse(mode, message, bubble) {
-            return new Promise((resolve) => {
-                const responseText = getMockResponse(mode, message);
-                const words = responseText.split(' ');
-                let wordIndex = 0;
-
-                const streamInterval = setInterval(() => {
-                    if (wordIndex < words.length) {
-                        bubble.textContent += (wordIndex === 0 ? '' : ' ') + words[wordIndex];
-                        wordIndex++;
-                        scrollToBottom();
-                    } else {
-                        clearInterval(streamInterval);
-                        // Render final Markdown after mock streaming completes
-                        bubble.innerHTML = renderMarkdown(responseText);
-                        resolve();
-                    }
-                }, 50);
-            });
-        }
-
-        // ── Unified Streaming Handler ───────────────────────────────────────
-
-        async function streamResponse(mode, message, campaignInputsForRequest = null) {
-            isStreaming = true;
-            inputField.disabled = true;
-            sendBtn.disabled = true;
-            campaignUploadBtn.disabled = true;
-
-            showTypingIndicator();
-
-            // Brief delay for typing indicator UX
-            await new Promise(r => setTimeout(r, 800));
-            removeTypingIndicator();
-
-            // Create Jeff's bubble (empty, will fill with streamed content)
-            const msg = document.createElement('div');
-            msg.className = 'message jeff';
-            msg.innerHTML = `
-                <div class="message-label">◈ Jeff</div>
-                <div class="message-bubble"></div>
-            `;
-            chatArea.appendChild(msg);
-            const bubble = msg.querySelector('.message-bubble');
-
-            await streamFromBackend(mode, message, bubble, campaignInputsForRequest);
-
-            isStreaming = false;
-            inputField.disabled = false;
-            sendBtn.disabled = false;
-            campaignUploadBtn.disabled = false;
-            inputField.focus();
-        }
-
-        // ── Send Message ────────────────────────────────────────────────────
-
-        function sendMessage() {
-            if (isStreaming) return;
-
-            const message = inputField.value.trim();
-            if (!message) return; // Empty state guard
-
-            addUserMessage(message);
-            inputField.value = '';
-            streamResponse(currentMode, message, currentMode === 'campaign_builder' ? campaignInputs : null);
-        }
-
-        // ── Mode Switching ──────────────────────────────────────────────────
-        // Each mode preserves its own conversation. Switching saves the current
-        // mode's chat UI and restores the target mode's cached chat.
-        // Server-side LangChain memory persists per mode — NOT cleared on switch.
-
-        function switchMode(mode) {
-            if (mode === currentMode && chatArea.children.length > 0) return;
-
-            // Save current mode's chat UI to cache before switching
-            modeChatCache[currentMode] = chatArea.innerHTML;
-
-            // Switch to the new mode
-            currentMode = mode;
-            sessionId = modeSessions[mode];
-            updateCampaignControls();
-
-            // Update active button
-            modeButtons.forEach(btn => {
-                btn.classList.toggle('active', btn.dataset.mode === mode);
-            });
-
-            // Fade transition
-            chatArea.classList.add('fade-out');
-
-            setTimeout(async () => {
-                if (modeChatCache[mode]) {
-                    chatArea.innerHTML = modeChatCache[mode];
-                    chatArea.classList.remove('fade-out');
-                    scrollToBottom();
-                    return;
-                }
-
-                await fetchHistory(mode);
-
-                chatArea.classList.remove('fade-out');
-                scrollToBottom();
-            }, 200);
-        }
-
-        // ── Close / Reopen ──────────────────────────────────────────────────
-        // Close clears ALL modes' memory (server + client) — full reset.
-
-        async function closeInterface() {
-                // Clear ALL server-side LangChain sessions
-                for (const mode of Object.keys(modeSessions)) {
-                    try {
-                        await fetch(`${API_BASE_URL}/clear`, {
-                            method: 'POST',
-                            headers: jsonHeaders(),
-                            body: JSON.stringify({
-                                mode: mode,
-                                ...(authToken ? {} : { user_id: userId })
-                            })
-                        });
-                    } catch (e) {
-                        /* no-op */
-                    }
-                }
-
-            // Reset all session IDs and caches
-            for (const mode of Object.keys(modeSessions)) {
-                modeSessions[mode] = crypto.randomUUID();
-                modeChatCache[mode] = null;
-            }
-            sessionId = modeSessions[currentMode];
-
-            localStorage.setItem(
-                "jeff_mode_sessions",
-                JSON.stringify(modeSessions)
-            );
-
-            chatArea.innerHTML = '';
-            closeOverlay.classList.add('visible');
-            closeOverlay.setAttribute('aria-hidden', 'false');
-        }
-
-        function reopenInterface() {
-            closeOverlay.classList.remove('visible');
-            closeOverlay.setAttribute('aria-hidden', 'true');
-            addJeffMessage(welcomeMessages[currentMode]);
-            inputField.focus();
-        }
-
-        // ── Event Listeners ─────────────────────────────────────────────────
-
-        // Mode buttons
-        modeButtons.forEach(btn => {
-            btn.addEventListener('click', () => switchMode(btn.dataset.mode));
-        });
-
-        campaignUploadBtn.addEventListener('click', () => {
-            campaignUploadStatus.textContent = '';
-            campaignUploadModal.hidden = false;
-        });
-
-        campaignUploadCancel.addEventListener('click', () => {
-            campaignUploadModal.hidden = true;
-        });
-
-        campaignUploadModal.addEventListener('click', (event) => {
-            if (event.target === campaignUploadModal) campaignUploadModal.hidden = true;
-        });
-
-        campaignUploadSubmit.addEventListener('click', async () => {
-            if (isStreaming) return;
-            campaignUploadSubmit.disabled = true;
-            campaignUploadStatus.textContent = '';
-            try {
-                const inputs = collectCampaignInputs();
-                const file = campaignUploadFile.files[0];
-                const fileText = await readCampaignFile(file);
-                if (!Object.keys(inputs).length && !fileText.trim()) {
-                    campaignUploadStatus.textContent = 'Add at least one input or file.';
-                    return;
-                }
-
-                campaignInputs = inputs;
-                const uploadMessage = campaignUploadMessage(inputs, file?.name || '', fileText.trim());
-                campaignUploadModal.hidden = true;
-                addUserMessage('Uploaded campaign inputs.');
-                await streamResponse('campaign_builder', uploadMessage, campaignInputs);
-            } catch (error) {
-                campaignUploadStatus.textContent = error.message;
-            } finally {
-                campaignUploadSubmit.disabled = false;
-            }
-        });
-
-        // Send button
-        sendBtn.addEventListener('click', sendMessage);
-
-        chatArea.addEventListener('click', async (event) => {
-            const button = event.target.closest('.export-btn');
-            if (!button) return;
-
-            const message = button.closest('.message');
-            const text = message?.dataset.exportText || message?.querySelector('.message-bubble')?.innerText || '';
-            const exportType = button.dataset.export;
-            button.disabled = true;
-            try {
-                if (exportType === 'xlsx') await downloadExport('/export/xlsx', 'xlsx', text);
-                if (exportType === 'pdf') await downloadExport('/export/pdf', 'pdf', text);
-                if (exportType === 'campaign') await downloadExport('/export/campaign', 'json', message?.dataset.campaignJson || text);
-            } catch (error) {
-                console.warn(error.message);
-            } finally {
-                button.disabled = false;
-            }
-        });
-
-        // Enter key sends (without Shift)
-        inputField.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                sendMessage();
-            }
-        });
-
-        // Close button + ESC key
-        closeBtn.addEventListener('click', closeInterface);
-        reopenBtn.addEventListener('click', reopenInterface);
-
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') {
-                if (closeOverlay.classList.contains('visible')) {
-                    reopenInterface();
-                } else {
-                    closeInterface();
-                }
-            }
-        });
-
-        // ── Initialize ──────────────────────────────────────────────────────
-        updateCampaignControls();
-            fetchQuota();
-            fetchHistory(currentMode).finally(() => {
-                inputField.focus();
-            });
-    </script>
+  </div>
+
+  <div class="stats" id="stats">
+    <div class="statsHead" id="statsHead">
+      <span class="lbl">Stats</span>
+      <span class="peek" id="peek">0% understood &middot; 0% vision</span>
+      <span class="chev">&#9660;</span>
+    </div>
+    <div class="drawer">
+      <div class="stat understanding" id="statU">
+        <div class="row" data-stat="u">
+          <span class="k">Startup understood</span>
+          <span class="right"><span class="v" id="uVal">0%</span><span class="chev">&#9660;</span></span>
+        </div>
+        <div class="track"><div class="fill" id="uFill"></div></div>
+        <div class="graph"><div class="inner" id="uGraph"></div></div>
+      </div>
+      <div class="stat vision" id="statV">
+        <div class="row" data-stat="v">
+          <span class="k">Vision accomplished</span>
+          <span class="right"><span class="v" id="vVal">0%</span><span class="chev">&#9660;</span></span>
+        </div>
+        <div class="track"><div class="fill" id="vFill"></div></div>
+        <div class="graph"><div class="inner" id="vGraph"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="log" id="log"></div>
+
+  <div class="composer">
+    <button class="campaign-upload-btn" id="campaignUploadBtn" type="button" hidden>Upload Inputs</button>
+    <textarea id="input" rows="1" placeholder="Message…"></textarea>
+    <button class="send" id="send" aria-label="Send">&#9654;</button>
+  </div>
+</div>
+
+<div class="modal-overlay" id="campaignUploadModal" hidden>
+  <div class="upload-modal" role="dialog" aria-modal="true" aria-labelledby="campaignUploadTitle">
+    <h2 id="campaignUploadTitle">Campaign Inputs</h2>
+    <div class="upload-field"><label for="campaignBusinessModel">Business Model</label><textarea id="campaignBusinessModel"></textarea></div>
+    <div class="upload-field"><label for="campaignTargetUsers">Target Users</label><textarea id="campaignTargetUsers"></textarea></div>
+    <div class="upload-field"><label for="campaignDemographics">Demographics</label><textarea id="campaignDemographics"></textarea></div>
+    <div class="upload-field"><label for="campaignFinancialPlan">Financial Plan</label><textarea id="campaignFinancialPlan"></textarea></div>
+    <div class="upload-field"><label for="campaignUploadFile">Optional .md, .txt, or .docx</label><input id="campaignUploadFile" type="file" accept=".md,.txt,.docx"></div>
+    <div class="upload-status" id="campaignUploadStatus"></div>
+    <div class="modal-actions"><button type="button" id="campaignUploadCancel">Cancel</button><button type="button" class="primary" id="campaignUploadSubmit">Submit</button></div>
+  </div>
+</div>
+<div class="close-overlay" id="closeOverlay" aria-hidden="true">
+  <h2>Session Ended</h2><p>Your conversation has been cleared.</p><button type="button" id="reopenBtn">Reopen Jeff</button>
+</div>
+<script id="frames" type="application/json">["/ui-assets/images/avatars/investor/00.webp","/ui-assets/images/avatars/investor/01.webp","/ui-assets/images/avatars/investor/02.webp","/ui-assets/images/avatars/investor/03.webp","/ui-assets/images/avatars/investor/04.webp","/ui-assets/images/avatars/investor/05.webp","/ui-assets/images/avatars/investor/06.webp","/ui-assets/images/avatars/investor/07.webp","/ui-assets/images/avatars/investor/08.webp","/ui-assets/images/avatars/investor/09.webp","/ui-assets/images/avatars/investor/10.webp","/ui-assets/images/avatars/investor/11.webp","/ui-assets/images/avatars/investor/12.webp","/ui-assets/images/avatars/investor/13.webp","/ui-assets/images/avatars/investor/14.webp","/ui-assets/images/avatars/investor/15.webp","/ui-assets/images/avatars/investor/16.webp","/ui-assets/images/avatars/investor/17.webp","/ui-assets/images/avatars/investor/18.webp","/ui-assets/images/avatars/investor/19.webp","/ui-assets/images/avatars/investor/20.webp","/ui-assets/images/avatars/investor/21.webp","/ui-assets/images/avatars/investor/22.webp","/ui-assets/images/avatars/investor/23.webp"]</script>
+<script id="framesC" type="application/json">["/ui-assets/images/avatars/customer/00.webp","/ui-assets/images/avatars/customer/01.webp","/ui-assets/images/avatars/customer/02.webp","/ui-assets/images/avatars/customer/03.webp","/ui-assets/images/avatars/customer/04.webp","/ui-assets/images/avatars/customer/05.webp","/ui-assets/images/avatars/customer/06.webp","/ui-assets/images/avatars/customer/07.webp","/ui-assets/images/avatars/customer/08.webp","/ui-assets/images/avatars/customer/09.webp","/ui-assets/images/avatars/customer/10.webp","/ui-assets/images/avatars/customer/11.webp","/ui-assets/images/avatars/customer/12.webp","/ui-assets/images/avatars/customer/13.webp","/ui-assets/images/avatars/customer/14.webp","/ui-assets/images/avatars/customer/15.webp","/ui-assets/images/avatars/customer/16.webp","/ui-assets/images/avatars/customer/17.webp","/ui-assets/images/avatars/customer/18.webp","/ui-assets/images/avatars/customer/19.webp","/ui-assets/images/avatars/customer/20.webp","/ui-assets/images/avatars/customer/21.webp","/ui-assets/images/avatars/customer/22.webp","/ui-assets/images/avatars/customer/23.webp"]</script>
+<script id="framesB" type="application/json">["/ui-assets/images/avatars/business/00.webp","/ui-assets/images/avatars/business/01.webp","/ui-assets/images/avatars/business/02.webp","/ui-assets/images/avatars/business/03.webp","/ui-assets/images/avatars/business/04.webp","/ui-assets/images/avatars/business/05.webp","/ui-assets/images/avatars/business/06.webp","/ui-assets/images/avatars/business/07.webp","/ui-assets/images/avatars/business/08.webp","/ui-assets/images/avatars/business/09.webp","/ui-assets/images/avatars/business/10.webp","/ui-assets/images/avatars/business/11.webp","/ui-assets/images/avatars/business/12.webp","/ui-assets/images/avatars/business/13.webp","/ui-assets/images/avatars/business/14.webp","/ui-assets/images/avatars/business/15.webp","/ui-assets/images/avatars/business/16.webp","/ui-assets/images/avatars/business/17.webp","/ui-assets/images/avatars/business/18.webp","/ui-assets/images/avatars/business/19.webp","/ui-assets/images/avatars/business/20.webp","/ui-assets/images/avatars/business/21.webp","/ui-assets/images/avatars/business/22.webp","/ui-assets/images/avatars/business/23.webp"]</script>
+<script id="framesK" type="application/json">["/ui-assets/images/avatars/campaign/00.webp","/ui-assets/images/avatars/campaign/01.webp","/ui-assets/images/avatars/campaign/02.webp","/ui-assets/images/avatars/campaign/03.webp","/ui-assets/images/avatars/campaign/04.webp","/ui-assets/images/avatars/campaign/05.webp","/ui-assets/images/avatars/campaign/06.webp","/ui-assets/images/avatars/campaign/07.webp","/ui-assets/images/avatars/campaign/08.webp","/ui-assets/images/avatars/campaign/09.webp","/ui-assets/images/avatars/campaign/10.webp","/ui-assets/images/avatars/campaign/11.webp","/ui-assets/images/avatars/campaign/12.webp","/ui-assets/images/avatars/campaign/13.webp","/ui-assets/images/avatars/campaign/14.webp","/ui-assets/images/avatars/campaign/15.webp","/ui-assets/images/avatars/campaign/16.webp","/ui-assets/images/avatars/campaign/17.webp","/ui-assets/images/avatars/campaign/18.webp","/ui-assets/images/avatars/campaign/19.webp","/ui-assets/images/avatars/campaign/20.webp","/ui-assets/images/avatars/campaign/21.webp","/ui-assets/images/avatars/campaign/22.webp","/ui-assets/images/avatars/campaign/23.webp"]</script>
+<script id="framesF" type="application/json">["/ui-assets/images/avatars/financial/00.webp","/ui-assets/images/avatars/financial/01.webp","/ui-assets/images/avatars/financial/02.webp","/ui-assets/images/avatars/financial/03.webp","/ui-assets/images/avatars/financial/04.webp","/ui-assets/images/avatars/financial/05.webp","/ui-assets/images/avatars/financial/06.webp","/ui-assets/images/avatars/financial/07.webp","/ui-assets/images/avatars/financial/08.webp","/ui-assets/images/avatars/financial/09.webp","/ui-assets/images/avatars/financial/10.webp","/ui-assets/images/avatars/financial/11.webp","/ui-assets/images/avatars/financial/12.webp","/ui-assets/images/avatars/financial/13.webp","/ui-assets/images/avatars/financial/14.webp","/ui-assets/images/avatars/financial/15.webp","/ui-assets/images/avatars/financial/16.webp","/ui-assets/images/avatars/financial/17.webp","/ui-assets/images/avatars/financial/18.webp","/ui-assets/images/avatars/financial/19.webp","/ui-assets/images/avatars/financial/20.webp","/ui-assets/images/avatars/financial/21.webp","/ui-assets/images/avatars/financial/22.webp","/ui-assets/images/avatars/financial/23.webp"]</script>
+<script src="/ui-assets/js/jeff-ui.js" defer></script>
 </body>
-
 </html>

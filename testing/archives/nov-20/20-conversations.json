@@ -1,0 +1,972 @@
+{
+  "report_date": "2026-11-20",
+  "dataset": "Synthetic test corpus written from fictional founder scenarios; not claims about Sarvam, Cloudflare, or actual startups.",
+  "count": 20,
+  "modes": {
+    "general": 5,
+    "investor": 4,
+    "customer": 3,
+    "business_model": 3,
+    "campaign_builder": 3,
+    "financial": 2
+  },
+  "ports_used": [
+    8013,
+    8014,
+    8015,
+    8016,
+    8017,
+    8018,
+    8019,
+    8020
+  ],
+  "profile_user_ids": {
+    "indicforge": "nov20-indicforge",
+    "bharatcompute": "nov20-bharatcompute",
+    "codeyatra": "nov20-codeyatra",
+    "mrignet": "nov20-mrignet"
+  },
+  "session_ids": {
+    "indicforge": {
+      "general": "nov20-indicforge-general",
+      "investor": "nov20-indicforge-investor",
+      "business_model": "nov20-indicforge-business_model",
+      "campaign_builder": "nov20-indicforge-campaign_builder"
+    },
+    "bharatcompute": {
+      "financial": "nov20-bharatcompute-financial",
+      "investor": "nov20-bharatcompute-investor",
+      "business_model": "nov20-bharatcompute-business_model",
+      "general": "nov20-bharatcompute-general",
+      "customer": "nov20-bharatcompute-customer"
+    },
+    "codeyatra": {
+      "general": "nov20-codeyatra-general",
+      "investor": "nov20-codeyatra-investor",
+      "business_model": "nov20-codeyatra-business_model",
+      "customer": "nov20-codeyatra-customer",
+      "campaign_builder": "nov20-codeyatra-campaign_builder"
+    },
+    "mrignet": {
+      "financial": "nov20-mrignet-financial",
+      "investor": "nov20-mrignet-investor",
+      "general": "nov20-mrignet-general",
+      "campaign_builder": "nov20-mrignet-campaign_builder",
+      "customer": "nov20-mrignet-customer"
+    }
+  },
+  "scoring_review": {
+    "method": "Offline GPT-6 Luna scoring of cumulative founder-only snapshots. Jeff replies were excluded. The live scorer remains unwired; results are an offline evaluation and were not written to production state.",
+    "rubric": {
+      "0": "not discussed or dodged",
+      "1": "hard evidence (number, name, date, or named customer)",
+      "0.6": "concrete claim without a figure",
+      "0.3": "directional statement",
+      "0.1": "unsupported adjective"
+    },
+    "slot_weights": {
+      "problem": 1,
+      "icp": 1.2,
+      "product": 1,
+      "business_model": 1.4,
+      "pricing": 1.2,
+      "traction": 1.4,
+      "moat": 0.8,
+      "gtm": 1.1,
+      "team": 0.7,
+      "risks": 0.8,
+      "ask": 0.9
+    },
+    "vision_stage_weights": {
+      "problem_validated": 1,
+      "mvp_shipped": 2,
+      "first_users": 2,
+      "first_revenue": 3,
+      "retention_proven": 3,
+      "repeatable_gtm": 3,
+      "scale": 2
+    },
+    "automated_scorer": {
+      "model": "gpt-6-luna",
+      "reasoning_effort": "low",
+      "api_calls": 4,
+      "cumulative_snapshots_scored": 20,
+      "scored_at": "2026-11-20T08:26:58.701046+00:00"
+    },
+    "persistence": "Manual trend values are archived here only; no production SlotState or UnderstandingHistory was written.",
+    "usage": {
+      "input_tokens": 8750,
+      "cached_input_tokens": 0,
+      "output_tokens": 6273,
+      "total_tokens": 15023
+    },
+    "profiles": {
+      "indicforge": {
+        "user_id": "nov20-indicforge",
+        "usage": {
+          "input_tokens": 2175,
+          "cached_input_tokens": 0,
+          "output_tokens": 1545,
+          "total_tokens": 3720
+        },
+        "snapshots": [
+          {
+            "turn": 1,
+            "slots": {
+              "problem": 1,
+              "icp": 0.6,
+              "product": 0.3,
+              "business_model": 0.1,
+              "pricing": 0,
+              "traction": 0,
+              "moat": 0,
+              "gtm": 0.3,
+              "team": 0,
+              "risks": 0.6,
+              "ask": 0.3
+            },
+            "stages": {
+              "problem_validated": true,
+              "mvp_shipped": false,
+              "first_users": false,
+              "first_revenue": false,
+              "retention_proven": false,
+              "repeatable_gtm": false,
+              "scale": false
+            },
+            "thinnest": "pricing",
+            "evidence_summary": "Twelve discovery interviews in Bengaluru and Hyderabad found 7 founders reporting GPU setup delays; none had paid. The founder is exploring an API for startup use and asks what to validate.",
+            "understood_percent": 28.2,
+            "vision_percent": 6.2
+          },
+          {
+            "turn": 2,
+            "slots": {
+              "problem": 1,
+              "icp": 0.6,
+              "product": 1,
+              "business_model": 0.1,
+              "pricing": 0,
+              "traction": 1,
+              "moat": 0,
+              "gtm": 0.3,
+              "team": 0,
+              "risks": 0.6,
+              "ask": 0.3
+            },
+            "stages": {
+              "problem_validated": true,
+              "mvp_shipped": true,
+              "first_users": true,
+              "first_revenue": false,
+              "retention_proven": false,
+              "repeatable_gtm": false,
+              "scale": false
+            },
+            "thinnest": "pricing",
+            "evidence_summary": "A prototype supports Sarvam- and AI4Bharat-compatible models; 4 teams tried it over 3 weeks, one used it twice, and p95 latency was 2.1 seconds on one A100. None paid.",
+            "understood_percent": 46.4,
+            "vision_percent": 31.2
+          },
+          {
+            "turn": 3,
+            "slots": {
+              "problem": 1,
+              "icp": 0.6,
+              "product": 1,
+              "business_model": 0.1,
+              "pricing": 0,
+              "traction": 1,
+              "moat": 0,
+              "gtm": 0.3,
+              "team": 1,
+              "risks": 1,
+              "ask": 1
+            },
+            "stages": {
+              "problem_validated": true,
+              "mvp_shipped": true,
+              "first_users": true,
+              "first_revenue": false,
+              "retention_proven": false,
+              "repeatable_gtm": false,
+              "scale": false
+            },
+            "thinnest": "pricing",
+            "evidence_summary": "The two founders report 4 and 6 years of relevant experience. They are considering a ₹1.2 crore, 12-month pre-seed, have no external capital, and report four trials but no paid pilots.",
+            "understood_percent": 60.8,
+            "vision_percent": 31.2
+          },
+          {
+            "turn": 4,
+            "slots": {
+              "problem": 1,
+              "icp": 0.6,
+              "product": 1,
+              "business_model": 1,
+              "pricing": 1,
+              "traction": 1,
+              "moat": 0,
+              "gtm": 0.3,
+              "team": 1,
+              "risks": 1,
+              "ask": 1
+            },
+            "stages": {
+              "problem_validated": true,
+              "mvp_shipped": true,
+              "first_users": true,
+              "first_revenue": true,
+              "retention_proven": false,
+              "repeatable_gtm": false,
+              "scale": false
+            },
+            "thinnest": "moat",
+            "evidence_summary": "Two Indian AI teams converted to six-month paid pilots at ₹50,000/month each. Benchmark cost is ₹4.80 per million input tokens at 35% utilization; target price is ₹7/M, with 60% gross margin projected near 70% utilization.",
+            "understood_percent": 82.2,
+            "vision_percent": 50.0
+          },
+          {
+            "turn": 5,
+            "slots": {
+              "problem": 1,
+              "icp": 1,
+              "product": 1,
+              "business_model": 1,
+              "pricing": 1,
+              "traction": 1,
+              "moat": 0,
+              "gtm": 1,
+              "team": 1,
+              "risks": 1,
+              "ask": 1
+            },
+            "stages": {
+              "problem_validated": true,
+              "mvp_shipped": true,
+              "first_users": true,
+              "first_revenue": true,
+              "retention_proven": false,
+              "repeatable_gtm": false,
+              "scale": false
+            },
+            "thinnest": "moat",
+            "evidence_summary": "The planned January campaign targets 20 Indian AI teams via three cloud marketplaces and two founder communities, with a ₹4 lakh budget. Two pilots report setup time falling from 2 days to 3 hours; this is not evidence of repeated acquisition.",
+            "understood_percent": 93.0,
+            "vision_percent": 50.0
+          }
+        ]
+      },
+      "bharatcompute": {
+        "user_id": "nov20-bharatcompute",
+        "usage": {
+          "input_tokens": 2158,
+          "cached_input_tokens": 0,
+          "output_tokens": 1652,
+          "total_tokens": 3810
+        },
+        "snapshots": [
+          {
+            "turn": 1,
+            "slots": {
+              "problem": 0.3,
+              "icp": 0.3,
+              "product": 0.6,
+              "business_model": 0.3,
+              "pricing": 0,
+              "traction": 0.3,
+              "moat": 0,
+              "gtm": 0,
+              "team": 0,
+              "risks": 0,
+              "ask": 0
+            },
+            "stages": {
+              "problem_validated": false,
+              "mvp_shipped": false,
+              "first_users": false,
+              "first_revenue": false,
+              "retention_proven": false,
+              "repeatable_gtm": false,
+              "scale": false
+            },
+            "thinnest": "pricing",
+            "evidence_summary": "Plans to lease GPU servers in Mumbai and Hyderabad, with an estimated 8-node setup and six interested firms but no contracts. No pricing, customer segment, or validated problem is established.",
+            "understood_percent": 18.3,
+            "vision_percent": 0.0
+          },
+          {
+            "turn": 2,
+            "slots": {
+              "problem": 0.3,
+              "icp": 0.3,
+              "product": 0.6,
+              "business_model": 0.3,
+              "pricing": 0,
+              "traction": 0.3,
+              "moat": 0,
+              "gtm": 0.1,
+              "team": 1,
+              "risks": 0,
+              "ask": 1
+            },
+            "stages": {
+              "problem_validated": false,
+              "mvp_shipped": false,
+              "first_users": false,
+              "first_revenue": false,
+              "retention_proven": false,
+              "repeatable_gtm": false,
+              "scale": false
+            },
+            "thinnest": "pricing",
+            "evidence_summary": "Adds three founders with relevant quantified experience, a ₹40 lakh contribution, an ₹8 crore fundraising target, and two investor introductions. No customer contracts or pricing yet.",
+            "understood_percent": 33.1,
+            "vision_percent": 0.0
+          },
+          {
+            "turn": 3,
+            "slots": {
+              "problem": 0.3,
+              "icp": 0.3,
+              "product": 0.6,
+              "business_model": 1,
+              "pricing": 1,
+              "traction": 0.3,
+              "moat": 0,
+              "gtm": 0.1,
+              "team": 1,
+              "risks": 1,
+              "ask": 1
+            },
+            "stages": {
+              "problem_validated": false,
+              "mvp_shipped": false,
+              "first_users": false,
+              "first_revenue": false,
+              "retention_proven": false,
+              "repeatable_gtm": false,
+              "scale": false
+            },
+            "thinnest": "moat",
+            "evidence_summary": "Adds a proposed reserved-capacity model with ₹5 lakh monthly revenue and ₹3.6 lakh costs per node, a stated break-even utilization threshold, and two-year minimum contracts. Demand remains uncontracted.",
+            "understood_percent": 59.0,
+            "vision_percent": 0.0
+          },
+          {
+            "turn": 4,
+            "slots": {
+              "problem": 0.3,
+              "icp": 0.3,
+              "product": 1,
+              "business_model": 1,
+              "pricing": 1,
+              "traction": 1,
+              "moat": 0,
+              "gtm": 0.3,
+              "team": 1,
+              "risks": 1,
+              "ask": 1
+            },
+            "stages": {
+              "problem_validated": false,
+              "mvp_shipped": true,
+              "first_users": true,
+              "first_revenue": false,
+              "retention_proven": false,
+              "repeatable_gtm": false,
+              "scale": false
+            },
+            "thinnest": "moat",
+            "evidence_summary": "A six-week benchmark with two design partners produced a measured latency result on an 8-node cluster, and one partner signed a ₹3 lakh/month reservation. No received revenue or repeatable acquisition is stated.",
+            "understood_percent": 73.0,
+            "vision_percent": 25.0
+          },
+          {
+            "turn": 5,
+            "slots": {
+              "problem": 0.6,
+              "icp": 1,
+              "product": 1,
+              "business_model": 1,
+              "pricing": 1,
+              "traction": 1,
+              "moat": 0.3,
+              "gtm": 0.3,
+              "team": 1,
+              "risks": 1,
+              "ask": 1
+            },
+            "stages": {
+              "problem_validated": true,
+              "mvp_shipped": true,
+              "first_users": true,
+              "first_revenue": false,
+              "retention_proven": false,
+              "repeatable_gtm": false,
+              "scale": false
+            },
+            "thinnest": "moat",
+            "evidence_summary": "Five SaaS CTO interviews surface data residency and p95 latency priorities, with only one budget approval and stated workload volumes. This adds concrete customer evidence, but does not establish a defensible moat or repeatable sales.",
+            "understood_percent": 85.0,
+            "vision_percent": 31.2
+          }
+        ]
+      },
+      "codeyatra": {
+        "user_id": "nov20-codeyatra",
+        "usage": {
+          "input_tokens": 2260,
+          "cached_input_tokens": 0,
+          "output_tokens": 1588,
+          "total_tokens": 3848
+        },
+        "snapshots": [
+          {
+            "turn": 1,
+            "slots": {
+              "problem": 0.6,
+              "icp": 1,
+              "product": 0.6,
+              "business_model": 0,
+              "pricing": 0,
+              "traction": 0.6,
+              "moat": 0,
+              "gtm": 0,
+              "team": 0,
+              "risks": 0,
+              "ask": 0.6
+            },
+            "stages": {
+              "problem_validated": false,
+              "mvp_shipped": false,
+              "first_users": false,
+              "first_revenue": false,
+              "retention_proven": false,
+              "repeatable_gtm": false,
+              "scale": false
+            },
+            "thinnest": "business_model",
+            "evidence_summary": "Exploring an India-focused assistant for 5–30 engineer startups; 9 dev leads interviewed and 6 requested integrations. GitHub, Jira, and Postgres connectivity through MCP is planned, but no product is shipped.",
+            "understood_percent": 32.9,
+            "vision_percent": 0.0
+          },
+          {
+            "turn": 2,
+            "slots": {
+              "problem": 0.6,
+              "icp": 1,
+              "product": 1,
+              "business_model": 0.6,
+              "pricing": 1,
+              "traction": 1,
+              "moat": 0,
+              "gtm": 0,
+              "team": 1,
+              "risks": 0,
+              "ask": 1
+            },
+            "stages": {
+              "problem_validated": false,
+              "mvp_shipped": true,
+              "first_users": true,
+              "first_revenue": false,
+              "retention_proven": false,
+              "repeatable_gtm": false,
+              "scale": false
+            },
+            "thinnest": "moat",
+            "evidence_summary": "The founder built a VS Code extension with 80 alpha installers and 17 weekly active users last month. Three Indian startups verbally offered ₹25,000/month pilots, but none signed. The two founders’ backgrounds and a ₹2 crore, 15-month fundraising plan are specified.",
+            "understood_percent": 68.2,
+            "vision_percent": 25.0
+          },
+          {
+            "turn": 3,
+            "slots": {
+              "problem": 0.6,
+              "icp": 1,
+              "product": 1,
+              "business_model": 1,
+              "pricing": 1,
+              "traction": 1,
+              "moat": 0,
+              "gtm": 0,
+              "team": 1,
+              "risks": 0,
+              "ask": 1
+            },
+            "stages": {
+              "problem_validated": false,
+              "mvp_shipped": true,
+              "first_users": true,
+              "first_revenue": false,
+              "retention_proven": false,
+              "repeatable_gtm": false,
+              "scale": false
+            },
+            "thinnest": "moat",
+            "evidence_summary": "Pricing is being considered at ₹1,499 per developer/month, with estimated ₹350 monthly costs per user at 60% weekly activity, a 10% team-plan discount, and projected 65% gross margin. The three verbal pilots remain unsigned.",
+            "understood_percent": 73.0,
+            "vision_percent": 25.0
+          },
+          {
+            "turn": 4,
+            "slots": {
+              "problem": 1,
+              "icp": 1,
+              "product": 1,
+              "business_model": 1,
+              "pricing": 1,
+              "traction": 1,
+              "moat": 0,
+              "gtm": 0,
+              "team": 1,
+              "risks": 0.6,
+              "ask": 1
+            },
+            "stages": {
+              "problem_validated": true,
+              "mvp_shipped": true,
+              "first_users": true,
+              "first_revenue": false,
+              "retention_proven": false,
+              "repeatable_gtm": false,
+              "scale": false
+            },
+            "thinnest": "moat",
+            "evidence_summary": "In 10 usability tests, 8 developers completed a pull request with MCP-connected tools; median task time fell from 35 to 22 minutes. The ICP is reiterated, and two users reported confusing credential setup. No signed or paid pilots are reported.",
+            "understood_percent": 80.7,
+            "vision_percent": 31.2
+          },
+          {
+            "turn": 5,
+            "slots": {
+              "problem": 1,
+              "icp": 1,
+              "product": 1,
+              "business_model": 1,
+              "pricing": 1,
+              "traction": 1,
+              "moat": 0,
+              "gtm": 1,
+              "team": 1,
+              "risks": 0.6,
+              "ask": 1
+            },
+            "stages": {
+              "problem_validated": true,
+              "mvp_shipped": true,
+              "first_users": true,
+              "first_revenue": false,
+              "retention_proven": false,
+              "repeatable_gtm": false,
+              "scale": false
+            },
+            "thinnest": "moat",
+            "evidence_summary": "The founder aims for 50 paying Indian developer teams by January; 11 teams are on the waitlist, with ₹1.5 lakh monthly campaign budget and access to four developer communities. This describes planned acquisition, not repeated evidenced acquisition.",
+            "understood_percent": 90.3,
+            "vision_percent": 31.2
+          }
+        ]
+      },
+      "mrignet": {
+        "user_id": "nov20-mrignet",
+        "usage": {
+          "input_tokens": 2157,
+          "cached_input_tokens": 0,
+          "output_tokens": 1488,
+          "total_tokens": 3645
+        },
+        "snapshots": [
+          {
+            "turn": 1,
+            "slots": {
+              "problem": 0.3,
+              "icp": 0,
+              "product": 0.6,
+              "business_model": 0,
+              "pricing": 0,
+              "traction": 1,
+              "moat": 0.3,
+              "gtm": 0,
+              "team": 0,
+              "risks": 0.6,
+              "ask": 0.3
+            },
+            "stages": {
+              "problem_validated": false,
+              "mvp_shipped": false,
+              "first_users": false,
+              "first_revenue": false,
+              "retention_proven": false,
+              "repeatable_gtm": false,
+              "scale": false
+            },
+            "thinnest": "icp",
+            "evidence_summary": "Plans a pure Mamba 7B model for Indic languages; estimates a 1,024-H100-hour, ₹22 lakh training run and reports nine months of runway. Two research labs offered evaluations, but none will pay. No specific buyer, shipped product, or revenue is established.",
+            "understood_percent": 28.6,
+            "vision_percent": 0.0
+          },
+          {
+            "turn": 2,
+            "slots": {
+              "problem": 0.3,
+              "icp": 0,
+              "product": 0.6,
+              "business_model": 0,
+              "pricing": 0,
+              "traction": 1,
+              "moat": 1,
+              "gtm": 0,
+              "team": 1,
+              "risks": 0.6,
+              "ask": 0.6
+            },
+            "stages": {
+              "problem_validated": false,
+              "mvp_shipped": false,
+              "first_users": false,
+              "first_revenue": false,
+              "retention_proven": false,
+              "repeatable_gtm": false,
+              "scale": false
+            },
+            "thinnest": "icp",
+            "evidence_summary": "Prior evidence carries forward. Adds two founders with five and eleven years of relevant experience, a signed license for an 800-billion-token corpus across four languages, and consideration of a ₹3 crore, 12-month round.",
+            "understood_percent": 41.9,
+            "vision_percent": 0.0
+          },
+          {
+            "turn": 3,
+            "slots": {
+              "problem": 0.3,
+              "icp": 0,
+              "product": 1,
+              "business_model": 0,
+              "pricing": 0,
+              "traction": 1,
+              "moat": 1,
+              "gtm": 0,
+              "team": 1,
+              "risks": 1,
+              "ask": 0.6
+            },
+            "stages": {
+              "problem_validated": false,
+              "mvp_shipped": false,
+              "first_users": false,
+              "first_revenue": false,
+              "retention_proven": false,
+              "repeatable_gtm": false,
+              "scale": false
+            },
+            "thinnest": "icp",
+            "evidence_summary": "Adds results from a 140-billion-token Hindi/Tamil pilot: 14% lower serving cost than Llama at equal evaluation score, but long-context retrieval is 2.3 times worse. Founder says no product has shipped.",
+            "understood_percent": 48.2,
+            "vision_percent": 0.0
+          },
+          {
+            "turn": 4,
+            "slots": {
+              "problem": 0.3,
+              "icp": 0.6,
+              "product": 1,
+              "business_model": 0,
+              "pricing": 0,
+              "traction": 1,
+              "moat": 1,
+              "gtm": 0.6,
+              "team": 1,
+              "risks": 1,
+              "ask": 0.6
+            },
+            "stages": {
+              "problem_validated": false,
+              "mvp_shipped": false,
+              "first_users": false,
+              "first_revenue": false,
+              "retention_proven": false,
+              "repeatable_gtm": false,
+              "scale": false
+            },
+            "thinnest": "business_model",
+            "evidence_summary": "Adds a plan to find five Indian translation SaaS design partners by March, offer free benchmarking on three workloads, and spend ₹80,000; two firms agreed to evaluate, but none are production users. These facts are labeled synthetic.",
+            "understood_percent": 60.2,
+            "vision_percent": 0.0
+          },
+          {
+            "turn": 5,
+            "slots": {
+              "problem": 0.6,
+              "icp": 1,
+              "product": 1,
+              "business_model": 0,
+              "pricing": 0,
+              "traction": 1,
+              "moat": 1,
+              "gtm": 0.6,
+              "team": 1,
+              "risks": 1,
+              "ask": 0.6
+            },
+            "stages": {
+              "problem_validated": false,
+              "mvp_shipped": false,
+              "first_users": false,
+              "first_revenue": false,
+              "retention_proven": false,
+              "repeatable_gtm": false,
+              "scale": false
+            },
+            "thinnest": "business_model",
+            "evidence_summary": "Adds tests by three Indian localization platforms of Hindi summarization: two accepted 3% error, while one requires below 1%. Identifies a likely buyer as a product head at a 20–100-person firm, but no one has committed budget. No paid customer, production user, or repeatable acquisition is evidenced.",
+            "understood_percent": 67.0,
+            "vision_percent": 0.0
+          }
+        ]
+      }
+    }
+  },
+  "conversations": [
+    {
+      "founder_profile": "indicforge",
+      "user_id": "nov20-indicforge",
+      "mode": "general",
+      "port": 8013,
+      "session_id": "nov20-indicforge-general",
+      "turn": 1,
+      "request_status": 200,
+      "founder_message": "I’m exploring IndicForge, an API for hosting open-weight Indian-language models for startups. In 12 discovery interviews across Bengaluru and Hyderabad, 7 founders said GPU setup delays their demos; no one has paid for a solution yet. What should I validate first? Keep it brief.",
+      "jeff_reply": "Validate whether GPU setup delays are painful enough to pay to remove. Go back to the seven founders with a specific paid-pilot offer. Track who pays, deadlines, and model/performance requirements; if nobody commits, investigate urgency or workarounds before building.",
+      "duration_ms": null
+    },
+    {
+      "founder_profile": "indicforge",
+      "user_id": "nov20-indicforge",
+      "mode": "general",
+      "port": 8014,
+      "session_id": "nov20-indicforge-general",
+      "turn": 2,
+      "request_status": 200,
+      "founder_message": "I read about Sarvam AI’s Token Factory and am considering an independent serving business for Indian-language open-weight models. A prototype supports Sarvam- and AI4Bharat-compatible models; 4 teams tried it in 3 weeks, one used it twice, none paid, and p95 is 2.1 seconds on one A100. Which milestone should I prioritize? Keep it brief.",
+      "jeff_reply": "Prioritize **one paid, repeat-use pilot** over improving latency or adding models.\n\nIn the next 2–3 weeks, return to the four teams with a priced offer for a specific workload. Aim for one team to pay and use it repeatedly on real tasks; ask why they’d choose it over Sarvam’s India-hosted API. ([sarvam.ai](https://www.sarvam.ai/token-factory?utm_source=openai))\n\nTreat 2.1-second p95 as a measurement to investigate with that customer—not yet a problem to optimize without knowing their workload and latency target.",
+      "duration_ms": 13310
+    },
+    {
+      "founder_profile": "bharatcompute",
+      "user_id": "nov20-bharatcompute",
+      "mode": "financial",
+      "port": 8015,
+      "session_id": "nov20-bharatcompute-financial",
+      "turn": 1,
+      "request_status": 200,
+      "founder_message": "I want to build BharatCompute, an Indian AI-compute company: lease GPU servers in Mumbai and Hyderabad first, without fabricating chips. A first 8-node cluster is estimated at ₹2.4 crore capex plus ₹6 lakh monthly power/network; runway is 14 months and 6 firms expressed interest, with no contracts. Is this launch financially feasible? Keep it brief.",
+      "jeff_reply": "**Not yet proven financially feasible.** The 14-month runway isn’t enough to judge without knowing your cash balance and whether the cluster costs are included in it.\n\n- **Cash needed:** ₹2.4 crore upfront plus ₹84 lakh for 14 months of power and network = **₹3.24 crore**, assuming no revenue. That excludes staff, rent, maintenance and other costs. ([legacy.sba.gov](https://legacy.sba.gov/es/guia-de-negocios/planifique-su-empresa/calcule-sus-costos-de-lanzamiento?utm_source=openai))\n- **Revenue:** Six interested firms are encouraging, but none is committed. Monthly revenue must cover more than ₹6 lakh to fund operations; recovering the upfront investment requires more still.\n\n**Recommendation:** Secure paid pilots or binding commitments, then test a smaller deployment in one city before committing to eight nodes across both.\n\nWhat’s your cash balance, and does the 14-month runway already include the ₹2.4 crore capex?",
+      "duration_ms": 21265
+    },
+    {
+      "founder_profile": "codeyatra",
+      "user_id": "nov20-codeyatra",
+      "mode": "general",
+      "port": 8016,
+      "session_id": "nov20-codeyatra-general",
+      "turn": 1,
+      "request_status": 200,
+      "founder_message": "I’m exploring CodeYatra, an India-focused coding assistant for 5–30 engineer startups. After reading about Cloudflare’s Code Mode for MCP, I want to connect GitHub, Jira, and Postgres tools through MCP; 9 Indian dev leads interviewed, 6 asked for those integrations, and there is no shipped product. What should I validate first? Keep it brief.",
+      "jeff_reply": "**Validate one painful, recurring workflow—not the integrations themselves.** Six of nine leads asking for integrations is a promising signal, but it doesn’t yet show urgency or willingness to pay.\n\n1. **Re-interview those six:** Ask for the last time they needed information across these tools, how long it took, what they use today, and who would approve a purchase.\n2. **Test the strongest workflow manually** with 2–3 teams using sanitized data. Measure time saved against their current approach, and ask for a paid pilot or another concrete commitment.\n3. **Check the trust hurdle early:** Would they permit access to code and database data? Start with limited, read-only access; don’t assume all three integrations are necessary.\n\nTreat Code Mode as an implementation option, not the hypothesis: it can reduce tool-definition context, but it doesn’t establish customer demand. ([blog.cloudflare.com](https://blog.cloudflare.com/code-mode-mcp/?utm_source=openai))",
+      "duration_ms": 15063
+    },
+    {
+      "founder_profile": "mrignet",
+      "user_id": "nov20-mrignet",
+      "mode": "financial",
+      "port": 8017,
+      "session_id": "nov20-mrignet-financial",
+      "turn": 1,
+      "request_status": 200,
+      "founder_message": "MrigNet plans a pure Mamba/state-space 7B model for Indic languages, with no Transformer–Mamba hybrid. The first training run is estimated at 1,024 H100 hours and ₹22 lakh; runway is 9 months, two research labs offered evaluations, and none will pay yet. Should we fund the experiment? Keep it brief.",
+      "jeff_reply": "**Not the full ₹22 lakh run yet.** Fund a smaller, capped validation first.\n\n- **Check the economics:** ₹22 lakh over 1,024 H100-hours implies about ₹2,150 per GPU-hour. Get an itemized quote and verify the token budget, throughput and whether this is training from scratch or adapting a checkpoint.\n- **Set a technical gate:** Have the labs agree upfront to evaluate Indic-language quality and inference cost against a comparable baseline. Pure Mamba can struggle with copying and in-context tasks, so test those too. ([arxiv.org](https://arxiv.org/abs/2406.07887?utm_source=openai))\n- **Set a commercial gate:** Lab evaluations are useful validation, not revenue. Seek a paid pilot or a concrete path to one before scaling.\n\nOnly commit to the full run if the budget still preserves an agreed runway reserve; nine months alone doesn’t tell us how much ₹22 lakh would shorten it.",
+      "duration_ms": 15243
+    },
+    {
+      "founder_profile": "indicforge",
+      "user_id": "nov20-indicforge",
+      "mode": "investor",
+      "port": 8018,
+      "session_id": "nov20-indicforge-investor",
+      "turn": 3,
+      "request_status": 200,
+      "founder_message": "IndicForge has two founders: I have 4 years in model serving and my cofounder has 6 years in GPU operations. We’re considering a ₹1.2 crore pre-seed for 12 months; we have no external capital and four product trials but no paid pilots yet. What diligence gaps should we close before approaching investors? Keep it brief.",
+      "jeff_reply": "Your technical backgrounds are credible; the biggest diligence gap is **evidence that customers will pay**.\n\n1. **Commercial traction:** For each of the four trials, document usage, results, decision-maker, budget and conversion timeline. Aim for at least one paid pilot; don’t present trials as revenue. ([ycombinator.com](https://www.ycombinator.com/library/4A-a-guide-to-seed-fundraising?utm_source=openai))\n2. **Product and differentiation:** Show a reproducible comparison against customer alternatives—such as latency, reliability and cost—on a representative workload.\n3. **Unit economics and market:** Identify the target buyer, pricing hypothesis, GPU cost per customer and expected gross margin. Explain how you’ll reach similar buyers.\n4. **Fundraise plan:** ₹1.2 crore over 12 months implies **₹10 lakh/month average net burn**. Build a monthly budget, downside case and milestones that could support the next raise.\n5. **Founder and legal readiness:** Clarify who owns sales, and prepare the cap table, founder vesting, IP assignments and trial/data-use agreements. ([carta.com](https://carta.com/learn/startups/fundraising/investor-due-diligence/?utm_source=openai))\n\nYou can start investor conversations before closing a paid pilot, but be explicit about what’s proven versus still a hypothesis.",
+      "duration_ms": 17096
+    },
+    {
+      "founder_profile": "bharatcompute",
+      "user_id": "nov20-bharatcompute",
+      "mode": "investor",
+      "port": 8019,
+      "session_id": "nov20-bharatcompute-investor",
+      "turn": 2,
+      "request_status": 200,
+      "founder_message": "BharatCompute has three founders; two have 7 years each in cloud engineering and one has run a 20-rack data center. I can contribute ₹40 lakh and we’re seeking ₹8 crore for 18 months; two Indian funds agreed to introductory meetings. What investor proof points should we prepare? Keep it brief.",
+      "jeff_reply": "For the introductory meetings, prepare evidence for six questions:\n\n- **Why this team?** Show specific cloud systems the two engineers built and the 20-rack operator’s uptime, capacity and cost results.\n- **Who will pay?** Bring customer interviews, paid pilots or signed commitments. Clearly distinguish interest from contracted revenue. ([seafund.in](https://seafund.in/article/understanding-the-stages-of-early-stage-funding-in-india-a-complete-breakdown/?utm_source=openai))\n- **Why BharatCompute?** Demonstrate the product, target customer and advantage over existing cloud providers.\n- **Can the economics work?** Model revenue and gross margin per unit of compute, including hardware, power, hosting and utilization; show a downside scenario.\n- **Why ₹8 crore?** Provide an 18-month budget, milestones and runway assumptions. Clarify whether your ₹40 lakh is **in addition to** the raise, when it will be invested and on what terms.\n- **Is the company diligence-ready?** Have a cap table, founder agreements, IP ownership and relevant supplier or customer documents ready. ([startupmentors.in](https://startupmentors.in/blog/are-you-investor-ready-a-pre-fundraise-checklist-for-indian-founders/?utm_source=openai))\n\nTwo introductory meetings are a useful start, not funding commitments. Prioritize **customer demand and credible economics** over a polished market-size slide.",
+      "duration_ms": 15770
+    },
+    {
+      "founder_profile": "codeyatra",
+      "user_id": "nov20-codeyatra",
+      "mode": "investor",
+      "port": 8020,
+      "session_id": "nov20-codeyatra-investor",
+      "turn": 2,
+      "request_status": 200,
+      "founder_message": "CodeYatra has two founders: I built a VS Code extension used by 80 alpha installers, and my cofounder has 5 years in developer infrastructure. Seventeen users were weekly active last month; three Indian startups verbally offered ₹25,000/month pilots but signed nothing. We plan to raise ₹2 crore for 15 months. What should we prove before fundraising? Keep it brief.",
+      "jeff_reply": "You have a credible founding team and early interest; the biggest fundraising gap is **evidence that teams use and pay for CodeYatra**. Before a full fundraise, I’d aim to show:\n\n1. **Real demand:** Convert the three verbal offers into signed, preferably paid pilots. Define success upfront and seek at least one renewal or conversion.\n2. **Repeat usage and value:** Track weekly active users and retention by installation cohort. Interview active and inactive users; show what problem the extension solves and a measurable customer outcome. ([ycombinator.com](https://www.ycombinator.com/library/7V-how-to-find-product-market-fit?utm_source=openai))\n3. **A repeatable market:** Identify the buyer, target customer and how you’ll acquire similar teams beyond your network.\n4. **A credible use of funds:** ₹2 crore over 15 months implies roughly **₹13.3 lakh/month in net burn**. Show what you’ll spend it on and the milestones it should deliver.\n\nTreat these as **targets, not prerequisites**: you can start investor conversations now, but report the pilots as verbal interest—not revenue. ([ycombinator.com](https://www.ycombinator.com/library/4A-a-guide-to-seed-fundraising?utm_source=openai))",
+      "duration_ms": 14800
+    },
+    {
+      "founder_profile": "mrignet",
+      "user_id": "nov20-mrignet",
+      "mode": "investor",
+      "port": 8013,
+      "session_id": "nov20-mrignet-investor",
+      "turn": 2,
+      "request_status": 200,
+      "founder_message": "MrigNet has two founders: I have 5 years in sequence modeling and my cofounder has 11 years building Tamil and Hindi corpora. We have a signed license for an 800-billion-token corpus across four languages and are considering a ₹3 crore round for 12 months. What investor diligence questions should we answer? Keep it brief.",
+      "jeff_reply": "I’d prepare concise, evidence-backed answers to these questions:\n\n1. **Customer and product:** Who pays for what use case, and what evidence shows they’ll buy rather than use an existing model?\n2. **Corpus rights:** Who owns the underlying data? Does the license permit commercial training and use of model weights, and what are its exclusivity, expiry and termination terms?\n3. **Corpus quality:** How are the 800 billion tokens distributed across the four languages? How much is unique, usable and free of sensitive personal data? ([oecd.org](https://www.oecd.org/en/publications/2026/02/oecd-due-diligence-guidance-for-responsible-ai_7831bb49/full-report/component-4.html?utm_source=openai))\n4. **Technical advantage:** What will you build or adapt, and how will you prove it outperforms alternatives on held-out, customer-relevant tests in each language?\n5. **Economics and runway:** How does ₹3 crore—an average of **₹25 lakh per month**—split across compute, people, data and other costs? What happens if training costs more or takes longer?\n6. **Team and milestones:** Which gaps remain beyond your sequence-modeling and corpus expertise? What measurable product, customer and revenue milestones will make the next round fundable?\n7. **Round terms:** What valuation, dilution and ownership are you proposing, and who owns the founders’ existing and future IP?\n\nHave the **signed license, corpus audit, benchmark plan and 12-month budget** ready to share.",
+      "duration_ms": 17364
+    },
+    {
+      "founder_profile": "indicforge",
+      "user_id": "nov20-indicforge",
+      "mode": "business_model",
+      "port": 8014,
+      "session_id": "nov20-indicforge-business_model",
+      "turn": 4,
+      "request_status": 200,
+      "founder_message": "Since our earlier trials, two Indian AI teams converted to 6-month paid pilots at ₹50,000/month each. In our benchmark, serving costs ₹4.80 per million input tokens at 35% GPU utilization; target price is ₹7/M, and we project 60% gross margin only near 70% utilization. Does this business model hold together? Keep it brief.",
+      "jeff_reply": "**Promising, but not yet proven.** The two pilots bring in ₹1 lakh/month, or ₹6 lakh over six months, assuming both complete their terms.\n\n- At ₹7/M, the benchmark cost of ₹4.80/M implies **31% gross margin** at 35% utilization—not 60%.\n- If costs scale purely inversely with utilization, 70% utilization would imply ₹2.40/M and roughly **66% margin**. A 60% margin allows ₹2.80/M in total serving costs, including any costs not in the benchmark.\n- Because the pilots are fixed-fee, their actual margins depend on token usage. At ₹7/M, ₹1 lakh covers about **14.3 billion input tokens per month** across both customers.\n\nThe key test is whether real pilot usage, all serving costs, and achievable utilization support the target margin—and whether customers renew.",
+      "duration_ms": 14146
+    },
+    {
+      "founder_profile": "bharatcompute",
+      "user_id": "nov20-bharatcompute",
+      "mode": "business_model",
+      "port": 8015,
+      "session_id": "nov20-bharatcompute-business_model",
+      "turn": 3,
+      "request_status": 200,
+      "founder_message": "BharatCompute’s proposed 10-node cluster can sell reserved capacity for ₹5 lakh per node monthly. Lease, power and network cost ₹3.6 lakh/node; break-even requires 8 nodes above 65% utilization. Contracts would have a 2-year minimum. Where is the weakest assumption? Keep it brief.",
+      "jeff_reply": "The weakest assumption is the **break-even claim**. If revenue scales with utilization, 8 nodes at 65% generate ₹26 lakh a month—below the cluster’s ₹36 lakh monthly cost.\n\nIf customers pay the full reservation fee regardless of usage, 8 reserved nodes generate ₹40 lakh and utilization doesn’t determine break-even. In that case, the key assumption is securing those 2-year commitments.",
+      "duration_ms": 11900
+    },
+    {
+      "founder_profile": "codeyatra",
+      "user_id": "nov20-codeyatra",
+      "mode": "business_model",
+      "port": 8016,
+      "session_id": "nov20-codeyatra-business_model",
+      "turn": 3,
+      "request_status": 200,
+      "founder_message": "I’m considering CodeYatra at ₹1,499 per developer/month. At 60% weekly activity, model and tool calls cost about ₹350/user/month; a 10-seat team plan gets a 10% discount and projected gross margin is 65%. The three ₹25,000 verbal pilots are still unsigned. Does the pricing model work? Keep it brief.",
+      "jeff_reply": "**Promising, but not yet validated.** Assuming ₹350 is the monthly model/tool cost per *paid seat* at 60% activity:\n\n- **Individual:** ₹1,499 price implies **76.7% margin** before other costs.\n- **10-seat plan:** ₹13,491/month after discount implies **74.1% margin** before other costs.\n- To reach the projected **65% gross margin**, other costs would need to add about **₹122 per seat/month**.\n\nCheck hosting, support and payment fees, and test sensitivity to higher usage. The three ₹25,000 pilots are **unsigned**, so don’t treat ₹75,000 as committed revenue or proof of willingness to pay.",
+      "duration_ms": 8797
+    },
+    {
+      "founder_profile": "mrignet",
+      "user_id": "nov20-mrignet",
+      "mode": "general",
+      "port": 8017,
+      "session_id": "nov20-mrignet-general",
+      "turn": 3,
+      "request_status": 200,
+      "founder_message": "Our 140-billion-token Hindi/Tamil pilot of a pure Mamba model cost 14% less to serve than our Llama baseline at equal evaluation score, but long-context retrieval is still 2.3 times worse. We have not shipped a product. Should we publish the benchmark or focus on model quality? Keep it brief.",
+      "jeff_reply": "**Focus on model quality.** The 14% serving-cost advantage is promising, but the 2.3× retrieval gap could matter more to users—and you haven’t yet shown which workloads they value.\n\nPublish a **short, clearly labeled preliminary benchmark** only if it’s quick to do without distracting the team. Include the hardware, evaluation setup, context lengths, retrieval metric and limitations. Don’t frame equal aggregate scores as equal quality.\n\nNext, test retrieval improvements against a target use case; publish a fuller comparison once you can explain the trade-off for that use case.",
+      "duration_ms": 9651
+    },
+    {
+      "founder_profile": "indicforge",
+      "user_id": "nov20-indicforge",
+      "mode": "campaign_builder",
+      "port": 8018,
+      "session_id": "nov20-indicforge-campaign_builder",
+      "turn": 5,
+      "request_status": 200,
+      "founder_message": "For an IndicForge January launch, we’ll target 20 Indian AI teams through three cloud marketplaces and two founder communities. Two pilots report setup time falling from 2 days to 3 hours. Campaign budget is ₹4 lakh. Draft a concise campaign angle and call to action; treat these as our synthetic test-company facts.",
+      "jeff_reply": "**Campaign angle:** Get Indian AI teams from setup to building faster. In two IndicForge pilots, teams reported cutting setup time from two days to three hours.\n\n**Call to action:** “See how IndicForge fits your AI stack. Book a demo or enquire about a pilot.”",
+      "duration_ms": 8864
+    },
+    {
+      "founder_profile": "bharatcompute",
+      "user_id": "nov20-bharatcompute",
+      "mode": "general",
+      "port": 8019,
+      "session_id": "nov20-bharatcompute-general",
+      "turn": 4,
+      "request_status": 200,
+      "founder_message": "A 6-week BharatCompute benchmark with two design partners measured 1.8-second p95 first-token latency on an 8-node cluster. One partner signed a ₹3 lakh/month reservation; one is still evaluating. What should our next demand-validation milestone be? Keep it brief.",
+      "jeff_reply": "**Next milestone:** Within 6 weeks, secure **two additional paid reservations** at ≥₹3 lakh/month each for at least 3 months, with first payments received and start dates agreed.\n\nIncluding the existing partner, that would validate ₹9 lakh/month in committed demand across three customers—not just benchmark interest.",
+      "duration_ms": 9472
+    },
+    {
+      "founder_profile": "codeyatra",
+      "user_id": "nov20-codeyatra",
+      "mode": "customer",
+      "port": 8020,
+      "session_id": "nov20-codeyatra-customer",
+      "turn": 4,
+      "request_status": 200,
+      "founder_message": "We ran 10 CodeYatra usability tests: 8 developers completed a pull request using MCP-connected tools, and median task time fell from 35 to 22 minutes. Our target is Indian startups with 5–30 engineers; two users said credential setup was confusing. What onboarding change should we test? Keep it brief.",
+      "jeff_reply": "Test a **guided credential setup** that explains the required permissions, walks users through connecting their tools, and verifies the connection with a clear success or error message.\n\nCompare it with the current flow among developers at target startups. Track setup completion, setup time, and time to first pull request.",
+      "duration_ms": 7500
+    },
+    {
+      "founder_profile": "mrignet",
+      "user_id": "nov20-mrignet",
+      "mode": "campaign_builder",
+      "port": 8013,
+      "session_id": "nov20-mrignet-campaign_builder",
+      "turn": 4,
+      "request_status": 200,
+      "founder_message": "MrigNet wants five design partners among Indian translation SaaS firms by March. We’ll offer free benchmarking on three workloads; two firms have agreed to evaluate, none are production users. Budget is ₹80,000. Draft a concise outreach angle and CTA; these are synthetic test-company facts.",
+      "jeff_reply": "**Subject:** Benchmark three translation workloads with MrigNet\n\nHi [Name],\n\nWe’re inviting a small group of Indian translation SaaS teams to help evaluate MrigNet. We’ll benchmark it free on three workloads relevant to your product, so you can assess where it performs well—and where it needs work.\n\nTwo firms have agreed to evaluate it; we’re still looking for design partners.\n\n**Would you be open to a 20-minute call to choose the three workloads and discuss an evaluation before March?**",
+      "duration_ms": 9147
+    },
+    {
+      "founder_profile": "bharatcompute",
+      "user_id": "nov20-bharatcompute",
+      "mode": "customer",
+      "port": 8014,
+      "session_id": "nov20-bharatcompute-customer",
+      "turn": 5,
+      "request_status": 200,
+      "founder_message": "We interviewed five Indian SaaS CTOs about renting GPU capacity: three prioritized data residency, two prioritized p95 latency, and only one had approved budget. Target workloads are 40–120 million tokens monthly. Which customer segment should BharatCompute focus on first? Keep it brief.",
+      "jeff_reply": "Start with **Indian SaaS teams that prioritize data residency and have an approved GPU budget**, serving workloads of 40–120 million tokens per month.\n\nThis is a hypothesis, not a validated segment: confirm whether the one budget-approved CTO also prioritizes residency. If not, investigate that buyer first before committing to a segment.",
+      "duration_ms": 9180
+    },
+    {
+      "founder_profile": "codeyatra",
+      "user_id": "nov20-codeyatra",
+      "mode": "campaign_builder",
+      "port": 8015,
+      "session_id": "nov20-codeyatra-campaign_builder",
+      "turn": 5,
+      "request_status": 200,
+      "founder_message": "CodeYatra’s next private-beta expansion aims for 50 paying Indian developer teams by January; 11 teams are on the waitlist. We can spend ₹1.5 lakh monthly and have access to four developer communities. Draft a concise campaign angle and CTA; these are synthetic test-company facts.",
+      "jeff_reply": "**Campaign angle:** “From tool setup to pull request, with less friction.” Position CodeYatra as a developer workflow tool for Indian startup teams of 5–30 engineers.\n\n**CTA:** “Join the waitlist for CodeYatra’s paid private beta.”",
+      "duration_ms": 7534
+    },
+    {
+      "founder_profile": "mrignet",
+      "user_id": "nov20-mrignet",
+      "mode": "customer",
+      "port": 8016,
+      "session_id": "nov20-mrignet-customer",
+      "turn": 5,
+      "request_status": 200,
+      "founder_message": "Three Indian localization platforms tested MrigNet Hindi summarization: two accepted 3% error, one requires below 1%. The likely buyer is a product head at a 20–100 person firm; none has committed budget. Which ICP/use case should we validate first? Keep it brief.",
+      "jeff_reply": "**Validate first:** Product heads at 20–100-person Indian localization firms that can use **human-reviewed Hindi summaries** and tolerate roughly 3% error. Two of the three testers fit the accuracy threshold.\n\nAsk those two about a specific recurring summarization workflow, review costs, and which errors are unacceptable. Then seek a **paid pilot or budget commitment**—accuracy acceptance alone isn’t buying intent.\n\nDeprioritize the below-1% segment until you have evidence its higher accuracy requirement is worth pursuing.",
+      "duration_ms": 10167
+    }
+  ]
+}
