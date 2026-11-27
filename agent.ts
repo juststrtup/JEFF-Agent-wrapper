@@ -1,6 +1,7 @@
 import { webSearchTool, codeInterpreterTool, imageGenerationTool, Agent, AgentInputItem, Runner, withTrace } from "@openai/agents";
 import { OpenAI } from "openai";
 import { runGuardrails } from "@openai/guardrails";
+import { z } from "zod";
 import dotenv from "dotenv";
 
 dotenv.config();
@@ -61,6 +62,54 @@ export const JEFF_MAX_OUTPUT_TOKENS = Number(process.env.JEFF_MAX_OUTPUT_TOKENS 
 if (!Number.isSafeInteger(JEFF_MAX_OUTPUT_TOKENS) || JEFF_MAX_OUTPUT_TOKENS < 1) {
   throw new Error("JEFF_MAX_OUTPUT_TOKENS must be a positive integer");
 }
+
+const score = z.union([z.literal(0), z.literal(0.1), z.literal(0.3), z.literal(0.6), z.literal(1)]);
+export const startupScoreSchema = z.object({
+  scores: z.object({
+    problem: score,
+    icp: score,
+    product: score,
+    business_model: score,
+    pricing: score,
+    traction: score,
+    moat: score,
+    gtm: score,
+    team: score,
+    risks: score,
+    ask: score,
+  }).strict(),
+  stages: z.object({
+    problem_validated: z.boolean(),
+    mvp_shipped: z.boolean(),
+    first_users: z.boolean(),
+    first_revenue: z.boolean(),
+    retention_proven: z.boolean(),
+    repeatable_gtm: z.boolean(),
+    scale: z.boolean(),
+  }).strict(),
+}).strict();
+
+const scorerModel = process.env.JEFF_SCORER_MODEL?.trim();
+const scorerReasoningEffort = process.env.JEFF_SCORER_REASONING_EFFORT || "low";
+if (scorerReasoningEffort !== "low" && scorerReasoningEffort !== "medium") {
+  throw new Error("JEFF_SCORER_REASONING_EFFORT must be low or medium");
+}
+const scorerInstructions = process.env.JEFF_SCORER_SYSTEM_PROMPT?.trim();
+if (scorerModel && !scorerInstructions) {
+  console.warn(JSON.stringify({ event: "startup_scorer_prompt_missing" }));
+}
+
+export const startupScorer = scorerModel && scorerInstructions ? new Agent({
+  name: "Startup Understanding Scorer",
+  instructions: scorerInstructions,
+  model: scorerModel,
+  outputType: startupScoreSchema,
+  modelSettings: {
+    reasoning: { effort: scorerReasoningEffort },
+    preserveRawUsage: true,
+    store: false,
+  },
+}) : null;
 
 function guardrailsHasTripwire(results: any[]): boolean {
     return (results ?? []).some((r) => r?.tripwireTriggered === true);

@@ -23,7 +23,7 @@ Agent model IDs are configured through environment variables. The checked-in Ren
 - **Informer**: `INFORMER_AGENT_MODEL=gpt-4o-mini`.
 - **Guardrails moderation and jailbreak checks**: `gpt-4.1-mini`.
 
-`agent.ts` still falls back to `gpt-3.5-turbo` if either Jeff or Informer model setting is missing. The Jeff agent applies `JEFF_AGENT_REASONING_EFFORT=medium` and `JEFF_MAX_OUTPUT_TOKENS=1500` by default; both values are configurable. Cap hits are identified from provider completion or truncation metadata and logged for Jeff replies. GPT-6 Luna remains the scorer target; scorer code and its `JEFF_SCORER_MODEL` setting are not wired yet.
+`agent.ts` still falls back to `gpt-3.5-turbo` if either Jeff or Informer model setting is missing. The Jeff agent applies `JEFF_AGENT_REASONING_EFFORT=medium` and `JEFF_MAX_OUTPUT_TOKENS=1500` by default; both values are configurable. Cap hits are identified from provider completion or truncation metadata and logged for Jeff replies. Startup scoring uses `JEFF_SCORER_MODEL`, `JEFF_SCORER_SYSTEM_PROMPT`, and `JEFF_SCORER_REASONING_EFFORT`; keep the prompt value in private runtime configuration. The scorer remains disabled when its model or prompt is unset.
 
 --- 
 
@@ -37,8 +37,9 @@ The existing `sessions`, `messages`, and `token_usage` tables store per-mode cha
 
 - `slot_states`: one row per user for the latest slot scores, vision stages, thinnest slot, and aggregate percentages.
 - `understanding_history`: per-user, per-mode readings used to restore the latest 24 graph points.
+- `scorer_usage`: per-call scorer token details and provider cost, kept outside customer quota accounting.
 
-Migration `0002_understanding_state` creates these tables and the history lookup index. The fixed slot and stage weights and percentage calculations live in `understanding.py`; live scoring and API integration are still pending.
+Migrations `0002_understanding_state` and `0003_async_scorer_usage` create the scoring state, checkpoints, graph history, and internal scorer usage records. Fixed slot and stage weights and percentage calculations live in `understanding.py`.
 
 ---
 
@@ -53,6 +54,9 @@ G2 authenticates protected API calls with a signed WordPress JWT.
 Authenticated endpoints:
 
 - `POST /chat`
+- `GET /usage` — current user's used/remaining tokens and next reset time.
+- `GET /quota` — legacy quota response retained for existing clients.
+- `GET /understanding` — current user's startup scores, vision stages, thinnest slot, and latest 24 readings.
 - `POST /clear`
 - `GET /history/{session_id}`
 - `POST /export/xlsx`
@@ -63,10 +67,7 @@ Public endpoints:
 - `GET /`
 - `GET /health`
 
-Planned endpoints (not yet available):
-
-- `GET /usage` — current user’s remaining Jeff tokens and reset time.
-- `GET /understanding` — aggregate scores, slot and stage details, and recent graph readings.
+The active plan uses `PRO_TOKEN_LIMIT=150000` and `PRO_TOKEN_WINDOW_SECONDS=86400`. The window setting defaults to 86,400 seconds (24 hours); the development UI refreshes `/usage` on load and after each completed chat stream.
 
 Generate a local test token:
 
@@ -97,9 +98,9 @@ The UI maps six personas to backend modes: `orb` → `general`, `investor`, `cus
 
 ## Startup Insights
 
-Startup understanding is shared across a user’s modes and is based only on founder statements. The GPT-6 Luna scorer runs asynchronously after every 2–3 founder messages and must not delay a Jeff reply. It carries prior scores forward, can lower scores and vision stages when evidence changes, and leaves prior readings intact on failure.
+Startup understanding is shared across a user’s modes and is based only on founder statements. The configured GPT-6 Luna scorer runs asynchronously after every three founder messages and must not delay a Jeff reply. Its instructions are supplied through `JEFF_SCORER_SYSTEM_PROMPT`; if the scorer model or prompt is unset, live scoring is disabled while Jeff replies continue. It carries prior scores forward, can lower scores and vision stages when evidence changes, and leaves prior readings intact on failure.
 
-The scorer uses 11 fixed startup slots and the weighted rubric, and the vision metric uses the fixed seven-stage ladder. `slot_states` stores the latest per-user slot and stage state; `understanding_history` stores per-user, per-mode readings for graph history. The persistence models, migration, and deterministic weighted formula helpers are implemented. Live scoring and the authenticated `GET /understanding` endpoint remain pending.
+The scorer uses 11 fixed startup slots and the weighted rubric, and the vision metric uses the fixed seven-stage ladder. `slot_states` stores the latest per-user slot and stage state; `understanding_history` stores per-user, per-mode readings for graph history. The authenticated `GET /understanding` endpoint returns the latest state and up to 24 readings. The development UI displays slot scores, the vision ladder, score trends, and the thinnest startup area. Scorer token usage and cost are recorded separately from customer quota usage in `scorer_usage`.
 
 ---
 
@@ -214,6 +215,15 @@ Check the applied schema revision in the configured test database:
 .venv/bin/alembic current
 ```
 
+#### I. Scorer Usage Metric Checks
+
+Build the sidecar and run the focused cache-usage parser checks:
+
+```bash
+npm run build
+node tests/usage-metrics.test.js
+```
+
 ---
 
 ## Project Status
@@ -221,7 +231,7 @@ Check the applied schema revision in the configured test database:
 ### What's Done
 - **Dual-Process Daemon**: Setup `start.sh` and updated `render.yaml` to ensure both FastAPI and the Express sidecar launch automatically in production.
 - **NDJSON Stream Piping**: Replaced simulated streaming with native `StreamedRunResult` token piping.
-- **Quotas & Memory**: Implemented a rolling 24-hour token limit, 2-hour sliding session TTL, and persistent per-mode session tracking backed by PostgreSQL.
+- **Quotas & Memory**: Implemented a configurable rolling token window (active setting: 24 hours), `/usage`, a live development token chip, a 2-hour sliding session TTL, and persistent per-mode session tracking backed by PostgreSQL.
 - **Export Pipeline**: Server-side Excel (`openpyxl`) and PDF (`reportlab`) file generation are fully active.
 - **Campaign Builder Rename**: Updated the frontend and backend modes from `pitch_deck` to `campaign_builder`.
 - **Database Migrations**: Introduced Alembic for version-controlled schema management and database migrations. 
@@ -231,16 +241,18 @@ Check the applied schema revision in the configured test database:
 - **Campaign Builder**: Added cross-mode context retrieval, uploaded input overrides, Campaign Registration JSON validation, and downloadable JSON export.
 - **Frontend History Restoration**: Added history hydration during Jeff UI initialization, restoring persisted user and assistant messages from PostgreSQL after browser refreshes. Expired JWTs are refreshed and the history request retried when necessary, while new sessions continue to display the mode-specific welcome message.
 - **Startup Insight Foundation**: Added per-user slot state and per-user/per-mode history models, Alembic migration `0002_understanding_state`, and the fixed weighted percentage helpers.
-- **Project 3 Development UI and Offline Scoring**: Ported the new chat prototype into the development `jeff-ui.html`, extracted its avatar and scene assets, and added the General backend mode. Ran the 20 November synthetic conversation set through GPT-6 Luna offline to review cumulative startup-understanding and vision scores. The production scorer remains separate work.
+- **Project 3 Development UI and Offline Scoring**: Ported the new chat prototype into the development `jeff-ui.html`, extracted its avatar and scene assets, and added the General backend mode. Ran the 20 November synthetic conversation set through GPT-6 Luna offline to review cumulative startup-understanding and vision scores before live scorer integration.
+- **Live Startup Understanding**: Added the configured scorer agent and sidecar endpoint. The FastAPI chat path schedules scoring asynchronously after three persisted founder messages; Jeff's reply and customer quota accounting do not wait for or include scorer usage. Successful results update per-user slot/stage state, weighted percentages, the thinnest slot, the latest 24 graph readings, and separate scorer usage records.
+- **Development Stats Sidebar**: Connected `GET /understanding` to the development UI, including slot scores, the vision ladder, the thinnest-area hint, and per-user score-trend graphs. Empty accounts display 0% and “No readings yet.” Jeff receives the saved thinnest-area hint as follow-up context.
 
 ### What's Pending & Known Limitations
-- **Multi-instance scaling**: Future support for distributed caching (e.g. Redis) if horizontal scaling is required.
+- **Multi-instance coordination**: The scorer currently serializes work per user within one FastAPI process. Add distributed coordination before running multiple FastAPI workers or instances to prevent duplicate scorer calls.
 - **Concurrent quota synchronization**: Future support for transactional locking or equivalent concurrency control to ensure accurate quota enforcement under high concurrent load.
-- **System Prompts**: Jeff and Informer system prompts are supplied through environment variables (JEFF_SYSTEM_PROMPT, INFORMER_SYSTEM_PROMPT) and managed outside this repository.
-- **Jeff Pro UI and Startup Scoring**: The development UI is ported in this repository; the active WordPress shortcode asset has not been switched. Live asynchronous Luna scoring, the planned `/usage` and `/understanding` endpoints, and cached-token telemetry are pending. Jeff’s 1,500-token cap and cap-hit logging are implemented in the sidecar.
+- **System Prompts**: Jeff, Informer, and scorer instructions are supplied through environment variables (JEFF_SYSTEM_PROMPT, INFORMER_SYSTEM_PROMPT, JEFF_SCORER_SYSTEM_PROMPT) and managed outside this repository.
+- **Jeff Pro UI and Startup Scoring**: The development UI and live async scorer are implemented in this repository; the active WordPress shortcode asset has not been switched. Per-turn cached-input and cache-write counts are logged for Jeff and scorer requests; first-week cache/cost reporting remains pending. Jeff’s 1,500-token cap and cap-hit logging are implemented in the sidecar.
 
 ### Known-Broken
-- None in the existing deployed API. The planned endpoints above are not available yet.
+- None currently identified. Live scoring requires migration `0003_async_scorer_usage` and the scorer model and prompt to be configured in the deployed environment.
 
 ### What We Tested & How
 - **Health Checks**: Verified that `/health` resolves with both FastAPI and sidecar active.
@@ -250,5 +262,6 @@ Check the applied schema revision in the configured test database:
 - **Hosted Agent Tools**: Verified automatic hosted tool invocation (e.g., Web Search) using the configured production model.
 - **Session Persistence & History Restoration**: Verified that browser refreshes restore persisted conversation history while maintaining isolated histories for each interaction mode. Also verified that previously persisted conversations remain retrievable after logout/login.
 - **Campaign Builder**: Verified cross-mode context retrieval, uploaded input overrides, Campaign Registration JSON validation, and downloadable `.json` export through the `/export/campaign` endpoint.
-- **Startup Insight Foundation**: The focused weighted-formula tests passed. Alembic applied `0002_understanding_state` to the configured test database and reported it as the current revision. A local health check with the configured sidecar returned `sidecar: ok` on port 8011 because port 8010 was occupied.
+- **Startup Insight Foundation**: The focused weighted-formula tests passed. Alembic applied `0003_async_scorer_usage` to the configured test database. A local health check with the configured sidecar returned `sidecar: ok` on port 8011 because port 8010 was occupied.
 - **Project 3 Development UI and Offline Scoring**: Exercised 20 synthetic founder chat turns across all six modes on ports 8013–8020 and confirmed the chat histories were persisted. GPT-6 Luna scored five cumulative founder-only snapshots for each of four profiles; the weighted percentages use the existing formula helpers. The prompts, replies, per-turn scores, and review are archived in [`testing/archives/nov-20/20-conversations.json`](testing/archives/nov-20/20-conversations.json) and [`testing/archives/nov-20/score-trend-review.md`](testing/archives/nov-20/score-trend-review.md). This offline review does not verify live scorer scheduling, contradiction handling, or repeat-scoring stability.
+- **Live Scoring and Usage Metrics**: Used the Agent Browser with six short founder messages on port 8015. Two asynchronous scorer calls completed, and the sidebar restored two readings after refresh. Corrected scorer cache-write counts stayed within total input tokens; both scorer calls reported zero cached reads. A Terra turn reported cached reads, confirming cache telemetry is available for Jeff. The focused usage-metric checks passed. Scorer provider cost was unavailable in this local run, so this check does not establish average cost per conversation or a representative cache-hit rate.

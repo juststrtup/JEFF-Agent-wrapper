@@ -24,6 +24,7 @@ class Message(Base):
             ondelete="CASCADE",
         ),
         Index("ix_messages_user_id_mode_created_at", "user_id", "mode", "created_at"),
+        Index("ix_messages_user_id_role_id", "user_id", "role", "id"),
     )
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
@@ -55,6 +56,7 @@ class SlotState(Base):
     thinnest: Mapped[str] = mapped_column(Text, nullable=False, default="")
     understood: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
     vision: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
+    last_scored_message_id: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
 
@@ -69,4 +71,27 @@ class UnderstandingHistory(Base):
     mode: Mapped[str] = mapped_column(Text, nullable=False)
     understood: Mapped[float] = mapped_column(Float, nullable=False)
     vision: Mapped[float] = mapped_column(Float, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
+class ScorerUsage(Base):
+    __tablename__ = "scorer_usage"
+    __table_args__ = (
+        Index("ix_scorer_usage_user_id_created_at", "user_id", "created_at"),
+        Index("ix_scorer_usage_session_id", "session_id"),
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    user_id: Mapped[str] = mapped_column(Text, nullable=False)
+    mode: Mapped[str] = mapped_column(Text, nullable=False)
+    session_id: Mapped[str] = mapped_column(Text, nullable=False)
+    first_message_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    last_message_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    model: Mapped[str] = mapped_column(Text, nullable=False)
+    input_tokens: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    cached_input_tokens: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    cache_write_tokens: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    output_tokens: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    reasoning_tokens: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    provider_cost_usd: Mapped[float | None] = mapped_column(Float, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
