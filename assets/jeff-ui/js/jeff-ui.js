@@ -58,6 +58,7 @@
   let personaLoading = false;
   let quotaRemaining = null;
   let campaignInputs = {};
+  let understandingSnapshot = null;
 
   const app = document.querySelector('.app');
   const log = document.getElementById('log');
@@ -341,11 +342,11 @@
 
   async function fetchQuota() {
     try {
-      const url = authToken ? `${API_BASE_URL}/quota` : `${API_BASE_URL}/quota?user_id=${encodeURIComponent(userId)}`;
+      const url = authToken ? `${API_BASE_URL}/usage` : `${API_BASE_URL}/usage?user_id=${encodeURIComponent(userId)}`;
       const response = await apiFetch(url);
       if (!response.ok) throw new Error(`Quota request failed: HTTP ${response.status}`);
       const quota = await response.json();
-      setQuota(Number(quota.remaining), Number(quota.limit), Number(quota.reset));
+      setQuota(Number(quota.remaining), Number(quota.limit), Number(quota.reset_at));
     } catch (error) {
       console.warn('Unable to load Jeff quota:', error.message);
       setQuota(NaN, NaN, NaN);
@@ -362,6 +363,79 @@
       console.warn('Unable to restore Jeff history:', error.message);
       renderHistory([], mode);
     }
+  }
+
+  const SLOT_LABELS = {
+    problem: 'Problem', icp: 'ICP', product: 'Product', business_model: 'Business model',
+    pricing: 'Pricing', traction: 'Traction', moat: 'Moat', gtm: 'GTM', team: 'Team', risks: 'Risks', ask: 'Ask',
+  };
+  const STAGE_LABELS = {
+    problem_validated: 'Problem validated', mvp_shipped: 'MVP shipped', first_users: 'First users',
+    first_revenue: 'First revenue', retention_proven: 'Retention proven', repeatable_gtm: 'Repeatable GTM', scale: 'Scale',
+  };
+  const MODE_COLORS = {
+    general: '#c9a8ff', investor: '#ff5262', customer: '#39e0b0', business_model: '#e0b23c',
+    campaign_builder: '#ff8c3a', financial: '#a8e33a',
+  };
+
+  function updateUnderstanding(data) {
+    understandingSnapshot = data;
+    const understood = Number(data?.understood) || 0;
+    const vision = Number(data?.vision) || 0;
+    document.getElementById('peek').textContent = `${Math.round(understood)}% understood · ${Math.round(vision)}% vision`;
+    document.getElementById('uVal').textContent = `${Math.round(understood)}%`;
+    document.getElementById('vVal').textContent = `${Math.round(vision)}%`;
+    document.getElementById('uFill').style.width = `${Math.max(0, Math.min(100, understood))}%`;
+    document.getElementById('vFill').style.width = `${Math.max(0, Math.min(100, vision))}%`;
+
+    const slotList = document.getElementById('slotList');
+    slotList.replaceChildren();
+    (data?.slots || []).forEach((slot) => {
+      const item = document.createElement('div');
+      item.className = 'slot-item';
+      const label = document.createElement('span');
+      label.textContent = SLOT_LABELS[slot.key] || slot.key;
+      const score = document.createElement('span');
+      score.className = 'score';
+      score.textContent = `${Math.round((Number(slot.score) || 0) * 100)}%`;
+      item.append(label, score);
+      slotList.append(item);
+    });
+    document.getElementById('thinnestNote').textContent = data?.has_readings && data.thinnest
+      ? `Jeff is digging into: ${SLOT_LABELS[data.thinnest] || data.thinnest}`
+      : 'No readings yet';
+
+    const stageList = document.getElementById('stageList');
+    stageList.replaceChildren();
+    (data?.stages || []).forEach((stage) => {
+      const item = document.createElement('div');
+      item.className = `stage-item${stage.complete ? ' done' : ''}`;
+      const label = document.createElement('span');
+      label.textContent = STAGE_LABELS[stage.key] || stage.key;
+      const state = document.createElement('span');
+      state.className = 'state';
+      state.textContent = stage.complete ? 'Done' : '—';
+      item.append(label, state);
+      stageList.append(item);
+    });
+    renderGraph('u');
+    renderGraph('v');
+  }
+
+  async function fetchUnderstanding() {
+    try {
+      const suffix = authToken ? '' : `?user_id=${encodeURIComponent(userId)}`;
+      const response = await apiFetch(`${API_BASE_URL}/understanding${suffix}`);
+      if (!response.ok) throw new Error(`Understanding request failed: HTTP ${response.status}`);
+      updateUnderstanding(await response.json());
+    } catch (error) {
+      console.warn('Unable to load startup understanding:', error.message);
+    }
+  }
+
+  function refreshUnderstandingAfterChat() {
+    fetchUnderstanding();
+    [1500, 5000, 12000].forEach((delay) => setTimeout(fetchUnderstanding, delay));
   }
 
   function syncModeButtons() {
@@ -517,6 +591,7 @@
       showBackendError(bubble, error.message);
     } finally {
       await fetchQuota();
+      refreshUnderstandingAfterChat();
     }
   }
 
@@ -612,7 +687,24 @@
 
   function renderGraph(which) {
     const host = document.getElementById(which === 'u' ? 'uGraph' : 'vGraph');
-    host.innerHTML = '<div class="empty">No readings yet</div>';
+    const history = understandingSnapshot?.history || [];
+    if (!history.length) {
+      host.innerHTML = '<div class="empty">No readings yet</div>';
+      return;
+    }
+    const key = which === 'u' ? 'understood' : 'vision';
+    const width = 300;
+    const height = 66;
+    const points = history.map((reading, index) => ({
+      x: history.length === 1 ? width / 2 : 6 + (index / (history.length - 1)) * (width - 12),
+      y: height - 6 - (Math.max(0, Math.min(100, Number(reading[key]) || 0)) / 100) * (height - 12),
+      mode: MODE_COLORS[reading.mode] ? reading.mode : 'general',
+      value: Math.round(Number(reading[key]) || 0),
+    }));
+    const line = points.map((point) => `${point.x},${point.y}`).join(' ');
+    const dots = points.map((point) => `<circle cx="${point.x}" cy="${point.y}" r="2.8" fill="${MODE_COLORS[point.mode]}"><title>${point.value}% · ${MODE_LABELS[point.mode]}</title></circle>`).join('');
+    const stroke = which === 'u' ? '#ff5262' : '#ff8a92';
+    host.innerHTML = `<svg viewBox="0 0 ${width} ${height}" role="img" aria-label="${which === 'u' ? 'Startup understanding' : 'Vision'} history"><polyline points="${line}" fill="none" stroke="${stroke}" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/>${dots}</svg><div class="cap"><span>${history.length} readings</span><span>Latest ${points[points.length - 1].value}%</span></div>`;
   }
 
   document.getElementById('statsHead').addEventListener('click', () => document.getElementById('stats').classList.toggle('open'));
@@ -688,6 +780,7 @@
     renderGraph('u');
     renderGraph('v');
     fetchQuota();
+    fetchUnderstanding();
     fetchHistory(currentMode).then(() => input.focus());
     try {
       const assetSet = persona === 'orb' ? 'investor' : persona;

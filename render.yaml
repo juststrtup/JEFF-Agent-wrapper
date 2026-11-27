@@ -37,12 +37,28 @@ services:
         value: medium
       - key: JEFF_MAX_OUTPUT_TOKENS
         value: 1500
+      - key: JEFF_SCORER_MODEL
+        value: "gpt-6-luna"
+      - key: JEFF_SCORER_SYSTEM_PROMPT
+        sync: false
+      - key: JEFF_SCORER_REASONING_EFFORT
+        value: low
+      - key: JEFF_SCORER_INPUT_USD_PER_MILLION
+        value: "0.10"
+      - key: JEFF_SCORER_CACHED_INPUT_USD_PER_MILLION
+        value: "0.01"
+      - key: JEFF_SCORER_CACHE_WRITE_USD_PER_MILLION
+        value: "0.125"
+      - key: JEFF_SCORER_OUTPUT_USD_PER_MILLION
+        value: "0.50"
       - key: INFORMER_AGENT_MODEL
         value: "gpt-4o-mini"
       - key: CORS_ORIGINS
         value: "https://juststrtup.com,http://juststrtup.com,https://www.juststrtup.com,https://juststartup.com,http://juststartup.com,https://www.juststartup.com"
       - key: PRO_TOKEN_LIMIT
         value: "150000"
+      - key: PRO_TOKEN_WINDOW_SECONDS
+        value: "86400"
       - key: SIDECAR_PORT
         value: "3000"
       - key: START_NODE_SIDECAR

@@ -5,6 +5,7 @@ import os
 import re
 import subprocess
 import time
+import uuid
 from datetime import datetime, timezone
 from typing import Any
 import httpx
@@ -24,7 +25,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from auth import CurrentUser, get_current_user
 from db.database import AsyncSessionLocal
-from db.models import Message, Session as ChatSession, TokenUsage
+from db.models import (
+    Message,
+    ScorerUsage,
+    Session as ChatSession,
+    SlotState,
+    TokenUsage,
+    UnderstandingHistory,
+)
+from understanding import SLOTS, STAGES, WEIGHTS, calculate_understood, calculate_vision
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 load_dotenv(os.path.join(BASE_DIR, ".env"))
@@ -32,9 +41,15 @@ load_dotenv(os.path.join(os.path.dirname(BASE_DIR), ".env"), override=False)
 
 VALID_MODES = {"general", "investor", "business_model", "customer", "campaign_builder", "financial"}
 TOKEN_LIMIT = int(os.getenv("PRO_TOKEN_LIMIT", "150000"))
-TOKEN_WINDOW_SECONDS = 24 * 60 * 60
+TOKEN_WINDOW_SECONDS = int(os.getenv("PRO_TOKEN_WINDOW_SECONDS", "86400"))
+if TOKEN_WINDOW_SECONDS < 1:
+    raise ValueError("PRO_TOKEN_WINDOW_SECONDS must be a positive integer")
 SESSION_TTL_SECONDS = 2 * 60 * 60  # 2-hour session expiry
 SIDECAR_URL = os.getenv("NODE_SIDECAR_URL", "http://127.0.0.1:3000")
+SCORER_MODEL = os.getenv("JEFF_SCORER_MODEL", "").strip()
+SCORER_BATCH_SIZE = 3
+_scorer_locks: dict[str, asyncio.Lock] = {}
+_scorer_tasks: set[asyncio.Task] = set()
 
 app = FastAPI(
     title="Jeff AI Agent API",
@@ -328,9 +343,167 @@ def agent_history_from_session(chat_history: list[Message]) -> list[dict[str, An
     return messages
 
 
-async def record_chat_messages(db: AsyncSession, user_id: str, mode: str, user_text: str, assistant_text: str) -> None:
-    db.add(Message(user_id=user_id, mode=mode, role="user", content=user_text, created_at=utc_now()))
-    db.add(Message(user_id=user_id, mode=mode, role="assistant", content=assistant_text, created_at=utc_now()))
+async def record_chat_messages(
+    db: AsyncSession, user_id: str, mode: str, user_text: str, assistant_text: str
+) -> tuple[int, int]:
+    founder_message = Message(user_id=user_id, mode=mode, role="user", content=user_text, created_at=utc_now())
+    assistant_message = Message(user_id=user_id, mode=mode, role="assistant", content=assistant_text, created_at=utc_now())
+    db.add_all([founder_message, assistant_message])
+    await db.flush()
+    return founder_message.id, assistant_message.id
+
+
+def _empty_scores() -> dict[str, float]:
+    return {slot: 0.0 for slot in SLOTS}
+
+
+def _empty_stages() -> dict[str, bool]:
+    return {stage: False for stage in STAGES}
+
+
+def _optional_usage_count(value: Any) -> int | None:
+    return max(0, int(value)) if value is not None else None
+
+
+def startup_followup_context(state: SlotState | None) -> str:
+    if state is None or not state.thinnest:
+        return ""
+    scores = json.loads(state.slots_json or "{}")
+    score = float(scores.get(state.thinnest, 0.0))
+    return (
+        "[STARTUP FOLLOW-UP CONTEXT]\n"
+        f"The founder's thinnest understood area is {state.thinnest} ({score:.1f}/1). "
+        "When it fits the conversation, ask one useful question that could clarify this area. "
+        "Do not mention scores or the sidebar.\n[/STARTUP FOLLOW-UP CONTEXT]"
+    )
+
+
+async def _score_pending_founder_messages(user_id: str, mode: str, session_id: str) -> None:
+    if not SCORER_MODEL:
+        return
+    lock = _scorer_locks.setdefault(user_id, asyncio.Lock())
+    async with lock:
+        while True:
+            async with AsyncSessionLocal() as db:
+                state = await db.get(SlotState, user_id)
+                checkpoint = state.last_scored_message_id if state else 0
+                result = await db.execute(
+                    select(Message)
+                    .where(Message.user_id == user_id, Message.role == "user", Message.id > checkpoint)
+                    .order_by(Message.id)
+                    .limit(SCORER_BATCH_SIZE)
+                )
+                founders = list(result.scalars())
+                if len(founders) < SCORER_BATCH_SIZE:
+                    return
+                prior_scores = _empty_scores()
+                prior_stages = _empty_stages()
+                if state:
+                    prior_scores.update(json.loads(state.slots_json or "{}"))
+                    prior_stages.update(json.loads(state.stages_json or "{}"))
+                batch = founders
+                batch_mode = batch[0].mode
+                chat_session = await db.get(ChatSession, {"user_id": user_id, "mode": batch_mode})
+                batch_session_id = chat_session.session_id if chat_session else session_id
+
+            correlation_id = str(uuid.uuid4())
+            try:
+                async with httpx.AsyncClient(timeout=90.0) as client:
+                    response = await client.post(
+                        f"{SIDECAR_URL}/score",
+                        json={
+                            "correlationId": correlation_id,
+                            "mode": batch_mode,
+                            "sessionId": batch_session_id,
+                            "firstMessageId": batch[0].id,
+                            "lastMessageId": batch[-1].id,
+                            "founderMessages": [message.content for message in batch],
+                            "priorScores": prior_scores,
+                            "priorStages": prior_stages,
+                        },
+                    )
+                    response.raise_for_status()
+                    scored = response.json()
+                scores = scored["scores"]
+                stages = scored["stages"]
+                if set(scores) != set(SLOTS) or set(stages) != set(STAGES):
+                    raise ValueError("Scorer returned an unexpected slot or stage set")
+                scores = {slot: float(scores[slot]) for slot in SLOTS}
+                stages = {stage: stages[stage] is True for stage in STAGES}
+                understood = calculate_understood(scores)
+                vision = calculate_vision(stages)
+                thinnest = min(SLOTS, key=lambda slot: WEIGHTS[slot] * scores[slot])
+                usage = scored.get("usage") or {}
+                now = utc_now()
+                async with AsyncSessionLocal() as db:
+                    current = await db.get(SlotState, user_id)
+                    if current is None:
+                        current = SlotState(user_id=user_id, updated_at=now)
+                        db.add(current)
+                    current.slots_json = json.dumps(scores, separators=(",", ":"))
+                    current.stages_json = json.dumps(stages, separators=(",", ":"))
+                    current.thinnest = thinnest
+                    current.understood = understood
+                    current.vision = vision
+                    current.last_scored_message_id = batch[-1].id
+                    current.updated_at = now
+                    db.add(UnderstandingHistory(
+                        user_id=user_id, mode=batch_mode, understood=understood, vision=vision, created_at=now
+                    ))
+                    db.add(ScorerUsage(
+                        user_id=user_id,
+                        mode=batch_mode,
+                        session_id=batch_session_id,
+                        first_message_id=batch[0].id,
+                        last_message_id=batch[-1].id,
+                        model=SCORER_MODEL,
+                        input_tokens=_optional_usage_count(usage.get("inputTokens")),
+                        cached_input_tokens=_optional_usage_count(usage.get("cachedInputTokens")),
+                        cache_write_tokens=_optional_usage_count(usage.get("cacheWriteTokens")),
+                        output_tokens=_optional_usage_count(usage.get("outputTokens")),
+                        reasoning_tokens=_optional_usage_count(usage.get("reasoningTokens")),
+                        provider_cost_usd=usage.get("providerCostUsd"),
+                        created_at=now,
+                    ))
+                    keep_ids = select(UnderstandingHistory.id).where(
+                        UnderstandingHistory.user_id == user_id
+                    ).order_by(UnderstandingHistory.id.desc()).limit(24)
+                    await db.execute(
+                        delete(UnderstandingHistory).where(
+                            UnderstandingHistory.user_id == user_id,
+                            UnderstandingHistory.id.not_in(keep_ids),
+                        )
+                    )
+                    await db.commit()
+            except Exception as exc:
+                print(json.dumps({
+                    "event": "startup_scorer_persistence_failed",
+                    "user_id": user_id,
+                    "mode": mode,
+                    "correlation_id": correlation_id,
+                    "error": str(exc),
+                }))
+                return
+
+
+def schedule_startup_scoring(user_id: str, mode: str, session_id: str) -> None:
+    if not SCORER_MODEL:
+        return
+
+    async def run_safely() -> None:
+        try:
+            await _score_pending_founder_messages(user_id, mode, session_id)
+        except Exception as exc:
+            print(json.dumps({
+                "event": "startup_scorer_background_failed",
+                "user_id": user_id,
+                "mode": mode,
+                "error": str(exc),
+            }))
+
+    task = asyncio.create_task(run_safely())
+    _scorer_tasks.add(task)
+    task.add_done_callback(_scorer_tasks.discard)
 
 
 async def get_history_by_session_id(db: AsyncSession, session_id: str, user_id: str | None = None) -> list[Message]:
@@ -582,8 +755,10 @@ async def chat(request: ChatRequest, current_user: CurrentUser = Depends(get_cur
         )
 
     campaign_context = ""
+    followup_context = ""
     async with AsyncSessionLocal() as db:
         chat_history = await get_session_history(db, quota_key, request.mode, request.session_id)
+        followup_context = startup_followup_context(await db.get(SlotState, quota_key))
         if request.mode == "campaign_builder":
             campaign_context = await campaign_builder_context(db, quota_key, request.campaign_inputs)
     messages = agent_history_from_session(chat_history)
@@ -591,7 +766,7 @@ async def chat(request: ChatRequest, current_user: CurrentUser = Depends(get_cur
         messages.append({"role": "user", "content": [{"type": "input_text", "text": campaign_context}]})
     messages.append({"role": "user", "content": [{"type": "input_text", "text": request.message}]})
 
-    payload = {"messages": messages, "mode": request.mode}
+    payload = {"messages": messages, "mode": request.mode, "startupContext": followup_context}
 
     async def stream_response():
         full_response = ""
@@ -628,10 +803,15 @@ async def chat(request: ChatRequest, current_user: CurrentUser = Depends(get_cur
                             yield event.get("message", "Jeff hit an internal error.")
 
             if full_response:
+                founder_message_id = 0
                 async with AsyncSessionLocal() as db:
-                    await record_chat_messages(db, quota_key, request.mode, request.message, full_response)
+                    founder_message_id, _ = await record_chat_messages(
+                        db, quota_key, request.mode, request.message, full_response
+                    )
                     await record_token_usage(db, quota_key, input_tokens, output_tokens, total_tokens)
                     await db.commit()
+                if founder_message_id:
+                    schedule_startup_scoring(quota_key, request.mode, request.session_id)
             else:
                 async with AsyncSessionLocal() as db:
                     await record_token_usage(db, quota_key, input_tokens, output_tokens, total_tokens)
@@ -788,6 +968,66 @@ async def get_quota(current_user: CurrentUser = Depends(get_current_user), user_
         "limit": int(headers["X-Tokens-Limit"]),
         "remaining": int(headers["X-Tokens-Remaining"]),
         "reset": int(headers["X-Tokens-Reset"])
+    }
+
+
+@app.get("/usage")
+@app.get("/usage/")
+async def get_usage(current_user: CurrentUser = Depends(get_current_user), user_id: str | None = None):
+    quota_key = current_user.user_id or user_id
+    if not quota_key:
+        raise HTTPException(status_code=400, detail="Missing user_id.")
+
+    async with AsyncSessionLocal() as db:
+        state = await quota_state(db, quota_key)
+
+    return {
+        "limit": TOKEN_LIMIT,
+        "used": state["used"],
+        "remaining": state["remaining"],
+        "reset_at": state["reset_at"],
+    }
+
+
+@app.get("/understanding")
+@app.get("/understanding/")
+async def get_understanding(current_user: CurrentUser = Depends(get_current_user), user_id: str | None = None):
+    key = current_user.user_id or user_id
+    if not key:
+        raise HTTPException(status_code=400, detail="Missing user_id.")
+
+    async with AsyncSessionLocal() as db:
+        state = await db.get(SlotState, key)
+        result = await db.execute(
+            select(UnderstandingHistory)
+            .where(UnderstandingHistory.user_id == key)
+            .order_by(UnderstandingHistory.id.desc())
+            .limit(24)
+        )
+        history = list(reversed(result.scalars().all()))
+
+    scores = _empty_scores()
+    stages = _empty_stages()
+    understood = vision = 0.0
+    thinnest = ""
+    updated_at = None
+    if state:
+        scores.update(json.loads(state.slots_json or "{}"))
+        stages.update(json.loads(state.stages_json or "{}"))
+        understood, vision = state.understood, state.vision
+        thinnest, updated_at = state.thinnest, state.updated_at
+    return {
+        "understood": understood,
+        "vision": vision,
+        "thinnest": thinnest,
+        "updated_at": updated_at.isoformat() if updated_at else None,
+        "slots": [{"key": slot, "score": scores[slot], "weight": WEIGHTS[slot]} for slot in SLOTS],
+        "stages": [{"key": stage, "complete": stages[stage], "weight": weight} for stage, weight in STAGES.items()],
+        "history": [
+            {"mode": item.mode, "understood": item.understood, "vision": item.vision, "created_at": item.created_at.isoformat()}
+            for item in history
+        ],
+        "has_readings": bool(history),
     }
 
 @app.get("/health")
